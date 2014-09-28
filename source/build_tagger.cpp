@@ -7,6 +7,14 @@
 #define TAGSIZE 47
 using namespace std;
 
+//INIT DATA STRUCTURE
+int tagTable[TAGSIZE][TAGSIZE];
+vector< vector<int> > wordTagTable;
+int totalWordBag = 0;
+int totalWordType = 0;
+//END INIT DATA STRUCTURE
+
+//TAGS MAPPING START
 map<string,int> tags;
 map<int,string> indexTags;
 
@@ -34,13 +42,11 @@ int getTagIndex(string tag){
 		return it->second;
 	}
 }
+//TAGS MAPPING END
 
+//WORD MAPPNG STARTS
 map<string,int> words;
 map<int,string> indexWords;
-int tagTable[TAGSIZE][TAGSIZE];
-vector< vector<int> > wordTagTable;
-int totalWordBag = 0;
-int totalWordType = 0;
 
 void insertWord(string word){
 	map<string,int>::iterator it;
@@ -65,7 +71,7 @@ int getWordIndex(string word){
 		return it->second;
 	}
 }
-
+//WORD MAPPING ENDS
 
 void init(){
 	setTags();
@@ -75,13 +81,34 @@ void init(){
 	wordTagTable.push_back(emptyVec);
 }
 
+int getDelimiterIndex(string wordAndTag){
+	int index = wordAndTag.length()-1;
+	for(int i=index;i>=0;i--){
+		if(wordAndTag[i]=='/'){
+			return i;
+		}
+	}
+	return -1;
+}
+
+void splitWordAndTag(string wordAndTag, string &word, string &tag){
+	int delimIndex = getDelimiterIndex(wordAndTag);
+	word = wordAndTag.substr(0,delimIndex);
+	tag = wordAndTag.substr(delimIndex+1);
+	return;
+}
+
 void countData(ifstream &infile){
 	string line;
 	while(getline(infile,line)){
 		string prevTag = "<s>";
 		istringstream istream(line);
 		string word, tag;
-		while((getline(istream,word,'/'))&&(getline(istream,tag,' '))){
+		string wordAndTag;
+		//general case, counting the occurences of t(i),t(i-1)
+		while (getline(istream,wordAndTag,' ')){
+			splitWordAndTag(wordAndTag,word,tag);
+			//cout << word << " / " << tag << endl;
 			int tagIndex = getTagIndex(tag);
 			int prevTagIndex = getTagIndex(prevTag);
 			tagTable[tagIndex][prevTagIndex]+=1;
@@ -91,6 +118,11 @@ void countData(ifstream &infile){
 			prevTag = tag;
 			totalWordBag++;
 		}
+		//update for the sentence close tag
+		tag = "</s>";
+		int tagIndex = getTagIndex(tag);
+		int prevTagIndex = getTagIndex(prevTag);
+		tagTable[tagIndex][prevTagIndex]+=1;
 	}
 	totalWordType = words.size();
 	return;
