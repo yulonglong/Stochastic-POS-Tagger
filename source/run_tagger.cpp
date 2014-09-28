@@ -6,10 +6,13 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <map>
-#include <vector>
 #include <cstring>
 #include <cstdlib>
+#include <stack>
+#include <map>
+#include <vector>
+#include <cmath>
+#define DBL_MAX 1.7976931348623158e+308 /* max value */
 #define TAGSIZE 47
 using namespace std;
 
@@ -148,31 +151,133 @@ void importData(ifstream &infile){
 	return;
 }
 
+//for debugging purposes..
+void exportData(ofstream &outfile){
+	outfile << "Total Word Bag :" << totalWordBag << endl;
+	outfile << "Total Word Type :" << totalWordType << endl;
+	outfile << "Matrix of t(i-1) against t(i):" << endl;
+	for(int i=0;i<TAGSIZE;i++){
+		outfile << indexTags[i] << " ";
+		for(int j=0;j<TAGSIZE;j++){
+			outfile << tagProbTable[i][j] << " ";
+		}
+		outfile << endl;
+	}
+	outfile << "Matrix of t(i) against w(i):" << endl;
+	for(int i=0;i<totalWordType;i++){
+		outfile << indexWords[i] << " ";
+		for(int j=0;j<TAGSIZE;j++){
+			outfile << wordTagProbTable[i][j] << " ";
+		}
+		outfile << endl;
+	}
+	return;
+}
+
+
+
+
+vector<string> input;
+vector<string> tagOutput;
+
+void readInput(ifstream &infile){
+	string word;
+	while(getline(infile,word,' ')){
+		input.push_back(word);
+	}
+	return;
+}
+
+void viterbiAlgorithm(){
+	//initializing dp table
+	vector< vector<double> > dp;
+	vector<double> emptyVec (TAGSIZE,0);
+	for(int i=0;i<(int)input.size();i++){
+		dp.push_back(emptyVec);
+	}
+	int parent[input.size()+1];
+
+	//first loop
+	parent[0] = 45;
+	int wordIndex = getWordIndex(input[0]);
+	for(int i=0;i<TAGSIZE-2;i++){
+		dp[0][i]=log2(tagProbTable[i][45])+log2(wordTagProbTable[wordIndex][i]);
+	}
+
+	//real DP
+	for(int d=1;d<(int)input.size();d++){
+		wordIndex = getWordIndex(input[d]);
+		for(int i=0;i<TAGSIZE-2;i++){
+			double maxPrev = -DBL_MAX;
+			//get the maximum from the previous nodes
+			for(int j=0;j<TAGSIZE-2;j++){
+				double tempDouble = dp[d-1][j]+log2(tagProbTable[i][j]);
+				//cout << tempDouble << endl;
+				if(maxPrev<tempDouble){
+					maxPrev = tempDouble;
+					parent[d]=j;
+				}
+			}
+			dp[d][i]=maxPrev+log2(wordTagProbTable[wordIndex][i]);
+		}
+	}
+
+	double maxPrev = -DBL_MAX;
+	for(int j=0;j<TAGSIZE-2;j++){
+		double tempDouble = dp[input.size()-1][j]+log2(tagProbTable[46][j]);
+		if(maxPrev<tempDouble){
+			maxPrev = tempDouble;
+			parent[input.size()]=j;
+		}
+	}
+
+	//generate output tags
+	stack<int> s;
+	for(int d=input.size();d>0;d--){
+		s.push(parent[d]);
+	}
+	while(!s.empty()){
+		tagOutput.push_back(indexTags[s.top()]);
+		s.pop();
+	}
+	return;
+}
+
+void generateOutput(ofstream &outfile){
+	for(int i=0;i<(int)input.size();i++){
+		outfile << input[i] << "/" << tagOutput[i] << " ";
+	}
+	return;
+}
+
 int main(int argc, char* argv[]){
 	init();
 	string testFilename = argv[1];
 	string modelFilename = argv[2];
 	string outFilename = argv[3];
-	ifstream infile;
+	ifstream infile1, infile2;
 	ofstream outfile;
-
-	// infile.open(testFilename.c_str(),ios::in);
-	// if(infile.fail()){
-	// 	return 0;
-	// }
-
-	infile.open(modelFilename.c_str(),ios::in);
-	if(infile.fail()){
+	infile1.open(testFilename.c_str(),ios::in);
+	if(infile1.fail()){
+		return 0;
+	}
+	infile2.open(modelFilename.c_str(),ios::in);
+	if(infile2.fail()){
+		return 0;
+	}
+	outfile.open(outFilename.c_str(),ios::out);
+	if(outfile.fail()){
 		return 0;
 	}
 
-	//importData(infile);
+	importData(infile2);
 
-	// outfile.open(outFilename.c_str(),ios::out);
-	// if(outfile.fail()){
-	// 	return 0;
-	// }
+	readInput(infile1);
 	
+	viterbiAlgorithm();
+
+	generateOutput(outfile);
+
 
 	return 0;
 }
