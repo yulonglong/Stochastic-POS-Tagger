@@ -1,3 +1,8 @@
+//build_tagger.cpp
+//@author Steven Kester Yuwono
+//@matric A0080415N
+
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -54,7 +59,7 @@ int getTagIndex(string tag){
 map<string,int> words;
 map<int,string> indexWords;
 
-void insertWord(string word){
+int insertWord(string word){
 	map<string,int>::iterator it;
 	it = words.find(word);
 	if(it==words.end()){
@@ -64,8 +69,11 @@ void insertWord(string word){
 		vector<int> emptyVec (TAGSIZE,0);
 		wordTagTable.push_back(emptyVec);
 		wordTable.push_back(0);
+		return index;
 	}
-	return;
+	else{
+		return it->second;
+	}
 };
 
 int getWordIndex(string word){
@@ -120,8 +128,7 @@ void countData(ifstream &infile){
 			int prevTagIndex = getTagIndex(prevTag);
 			transitionTagTable[tagIndex][prevTagIndex]+=1;
 			tagTable[tagIndex] += 1;
-			insertWord(word);
-			int wordIndex = getWordIndex(word);
+			int wordIndex = insertWord(word);
 			wordTagTable[wordIndex][tagIndex]+=1;
 			wordTable[wordIndex]+=1;
 			prevTag = tag;
@@ -161,12 +168,7 @@ void exportData(ofstream &outfile){
 
 
 
-void processData(){
-	vector<double> emptyVec (TAGSIZE,0);
-	for(int i=0;i<totalWordType;i++){
-		wordTagProbTable.push_back(emptyVec);
-	}
-
+void addOneSmoothing(){
 	//ADD ONE SMOOTHING
 	for(int i=0;i<TAGSIZE;i++){
 		for(int j=0;j<TAGSIZE;j++){
@@ -183,7 +185,6 @@ void processData(){
 		}
 	}
 	//END ADD ONE SMOOTHING
-
 	for(int i=0;i<TAGSIZE;i++){
 		for(int j=0;j<TAGSIZE;j++){
 			tagProbTable[i][j] = (double)transitionTagTable[i][j]/(double)tagTable[j];
@@ -194,6 +195,21 @@ void processData(){
 			wordTagProbTable[i][j] = (double)wordTagTable[i][j]/(double)tagTable[j];
 		}
 	}
+	return;
+}
+
+
+
+void processData(){
+	vector<double> emptyVec (TAGSIZE,0);
+	for(int i=0;i<totalWordType;i++){
+		wordTagProbTable.push_back(emptyVec);
+	}
+
+	addOneSmoothing();
+	
+
+	
 }
 
 int main(int argc, char* argv[]){
