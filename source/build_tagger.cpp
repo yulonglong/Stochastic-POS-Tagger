@@ -8,6 +8,7 @@
 using namespace std;
 
 map<string,int> tags;
+map<int,string> indexTags;
 
 void setTags(){
 	string pennTags[] = { "CC", "CD", "DT", "EX", "FW", "IN",
@@ -18,6 +19,7 @@ void setTags(){
 			"</s>" };
 	for(int i=0;i<TAGSIZE;i++){
 		tags.insert(pair<string,int>(pennTags[i],i));
+		indexTags.insert(pair<int,string>(i,pennTags[i]));
 	}
 	return;
 }
@@ -34,8 +36,11 @@ int getTagIndex(string tag){
 }
 
 map<string,int> words;
+map<int,string> indexWords;
 int tagTable[TAGSIZE][TAGSIZE];
 vector< vector<int> > wordTagTable;
+int totalWordBag = 0;
+int totalWordType = 0;
 
 void insertWord(string word){
 	map<string,int>::iterator it;
@@ -43,6 +48,7 @@ void insertWord(string word){
 	if(it==words.end()){
 		int index = words.size();
 		words.insert(pair<string,int>(word,index));
+		indexWords.insert(pair<int,string>(index,word));
 		vector<int> emptyVec (TAGSIZE,0);
 		wordTagTable.push_back(emptyVec);
 	}
@@ -62,6 +68,7 @@ int getWordIndex(string word){
 
 
 void init(){
+	setTags();
 	memset(tagTable,0,sizeof(tagTable));
 	wordTagTable.clear();
 	vector<int> emptyVec (TAGSIZE,0);
@@ -77,21 +84,61 @@ void countData(ifstream &infile){
 		while((getline(istream,word,'/'))&&(getline(istream,tag,' '))){
 			int tagIndex = getTagIndex(tag);
 			int prevTagIndex = getTagIndex(prevTag);
-			tagTable[prevTagIndex][tagIndex]+=1;
+			tagTable[tagIndex][prevTagIndex]+=1;
 			insertWord(word);
 			int wordIndex = getWordIndex(word);
-			wordTagTable[tagIndex][wordIndex]++;
+			wordTagTable[wordIndex][tagIndex]+=1;
+			prevTag = tag;
+			totalWordBag++;
 		}
 	}
+	totalWordType = words.size();
+	return;
+}
+
+void exportData(ofstream &outfile){
+	outfile << "Total Word Bag :" << totalWordBag << endl;
+	outfile << "Total Word Type :" << totalWordType << endl;
+	outfile << "Matrix of t(i-1) against t(i):" << endl;
+	for(int i=0;i<TAGSIZE;i++){
+		outfile << indexTags[i] << " ";
+		for(int j=0;j<TAGSIZE;j++){
+			outfile << tagTable[i][j] << " ";
+		}
+		outfile << endl;
+	}
+	outfile << "Matrix of t(i) against w(i):" << endl;
+	for(int i=0;i<totalWordType;i++){
+		outfile << indexWords[i] << " ";
+		for(int j=0;j<TAGSIZE;j++){
+			outfile << wordTagTable[i][j] << " ";
+		}
+		outfile << endl;
+	}
+	return;
 }
 
 int main(int argc, char* argv[]){
-	string trainingFilename = argv[0];
-	string devtFilename = argv[1];
-	string modelFilename = argv[2];
+	init();
+	string trainingFilename = argv[1];
+	string devtFilename = argv[2];
+	string modelFilename = argv[3];
+	ifstream infile;
+	ofstream outfile;
 
-	int totalWordBag = 0;
-	int totalWordType = 0;
+	infile.open(trainingFilename.c_str(),ios::in);
+	if(infile.fail()){
+		return 0;
+	}
+
+	outfile.open(modelFilename.c_str(),ios::out);
+	if(outfile.fail()){
+		return 0;
+	}
+
+	countData(infile);
+	exportData(outfile);
+	
 
 	return 0;
 }
