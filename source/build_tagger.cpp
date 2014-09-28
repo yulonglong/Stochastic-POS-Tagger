@@ -8,8 +8,14 @@
 using namespace std;
 
 //INIT DATA STRUCTURE
-int tagTable[TAGSIZE][TAGSIZE];
+int transitionTagTable[TAGSIZE][TAGSIZE];
 vector< vector<int> > wordTagTable;
+int tagTable[TAGSIZE];
+vector<int> wordTable;
+
+
+double tagProbTable[TAGSIZE][TAGSIZE];
+vector< vector<double> > wordTagProbTable;
 int totalWordBag = 0;
 int totalWordType = 0;
 //END INIT DATA STRUCTURE
@@ -57,6 +63,7 @@ void insertWord(string word){
 		indexWords.insert(pair<int,string>(index,word));
 		vector<int> emptyVec (TAGSIZE,0);
 		wordTagTable.push_back(emptyVec);
+		wordTable.push_back(0);
 	}
 	return;
 };
@@ -75,7 +82,7 @@ int getWordIndex(string word){
 
 void init(){
 	setTags();
-	memset(tagTable,0,sizeof(tagTable));
+	memset(transitionTagTable,0,sizeof(transitionTagTable));
 	wordTagTable.clear();
 	vector<int> emptyVec (TAGSIZE,0);
 	wordTagTable.push_back(emptyVec);
@@ -111,10 +118,12 @@ void countData(ifstream &infile){
 			//cout << word << " / " << tag << endl;
 			int tagIndex = getTagIndex(tag);
 			int prevTagIndex = getTagIndex(prevTag);
-			tagTable[tagIndex][prevTagIndex]+=1;
+			transitionTagTable[tagIndex][prevTagIndex]+=1;
+			tagTable[tagIndex] += 1;
 			insertWord(word);
 			int wordIndex = getWordIndex(word);
 			wordTagTable[wordIndex][tagIndex]+=1;
+			wordTable[wordIndex]+=1;
 			prevTag = tag;
 			totalWordBag++;
 		}
@@ -122,7 +131,7 @@ void countData(ifstream &infile){
 		tag = "</s>";
 		int tagIndex = getTagIndex(tag);
 		int prevTagIndex = getTagIndex(prevTag);
-		tagTable[tagIndex][prevTagIndex]+=1;
+		transitionTagTable[tagIndex][prevTagIndex]+=1;
 	}
 	totalWordType = words.size();
 	return;
@@ -135,7 +144,7 @@ void exportData(ofstream &outfile){
 	for(int i=0;i<TAGSIZE;i++){
 		outfile << indexTags[i] << " ";
 		for(int j=0;j<TAGSIZE;j++){
-			outfile << tagTable[i][j] << " ";
+			outfile << tagProbTable[i][j] << " ";
 		}
 		outfile << endl;
 	}
@@ -143,11 +152,48 @@ void exportData(ofstream &outfile){
 	for(int i=0;i<totalWordType;i++){
 		outfile << indexWords[i] << " ";
 		for(int j=0;j<TAGSIZE;j++){
-			outfile << wordTagTable[i][j] << " ";
+			outfile << wordTagProbTable[i][j] << " ";
 		}
 		outfile << endl;
 	}
 	return;
+}
+
+
+
+void processData(){
+	vector<double> emptyVec (TAGSIZE,0);
+	for(int i=0;i<totalWordType;i++){
+		wordTagProbTable.push_back(emptyVec);
+	}
+
+	//ADD ONE SMOOTHING
+	for(int i=0;i<TAGSIZE;i++){
+		for(int j=0;j<TAGSIZE;j++){
+			transitionTagTable[i][j] += 1;
+			tagTable[i]+=1;
+			tagTable[j]+=1;
+		}
+	}
+	for(int i=0;i<totalWordType;i++){
+		for(int j=0;j<TAGSIZE;j++){
+			wordTagTable[i][j] += 1;
+			wordTable[i] += 1;
+			tagTable[j] += 1;
+		}
+	}
+	//END ADD ONE SMOOTHING
+
+	for(int i=0;i<TAGSIZE;i++){
+		for(int j=0;j<TAGSIZE;j++){
+			tagProbTable[i][j] = (double)transitionTagTable[i][j]/(double)tagTable[j];
+		}
+	}
+	for(int i=0;i<totalWordType;i++){
+		for(int j=0;j<TAGSIZE;j++){
+			wordTagProbTable[i][j] = (double)wordTagTable[i][j]/(double)tagTable[j];
+		}
+	}
 }
 
 int main(int argc, char* argv[]){
@@ -169,6 +215,7 @@ int main(int argc, char* argv[]){
 	}
 
 	countData(infile);
+	processData();
 	exportData(outfile);
 	
 
