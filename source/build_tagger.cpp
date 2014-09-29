@@ -26,15 +26,20 @@ public:
 
 	bool countData(string filename){
 		ifstream infile;
-
 		infile.open(filename.c_str(),ios::in);
 		if(infile.fail()){
 			return false;
 		}
 
+		string startTag = "<s>";
+		string endTag = "</s>";
+
 		string line;
 		while(getline(infile,line)){
-			string prevTag = "<s>";
+			//add tag count for first character <s>, mapped to index 45
+			storage.tagCountTable[45]+=1;
+
+			string prevTag = startTag;
 			istringstream istream(line);
 			string word, tag;
 			string wordAndTag;
@@ -53,10 +58,11 @@ public:
 				storage.totalWordBag++;
 			}
 			//update for the sentence close tag
-			tag = "</s>";
-			int tagIndex = storage.getTagIndex(tag);
+			int tagIndex = storage.getTagIndex(endTag);
 			int prevTagIndex = storage.getTagIndex(prevTag);
 			storage.transitionTagCountTable[tagIndex][prevTagIndex]+=1;
+			//add tag count for last character </s>, mapped to index 46
+			storage.tagCountTable[46]+=1;
 		}
 
 		//add one more word "---unknown---" to handle unknown words.
@@ -64,11 +70,13 @@ public:
 		storage.wordCountTable[wordIndex]+=1;
 
 		storage.totalWordType = storage.words.size();
+
+		infile.close();
 		return true;
 	}
 
 	void addOneSmoothing(){
-		//ADD ONE SMOOTHING
+		//ADD ONE to all tables
 		for(int i=0;i<TAGSIZE;i++){
 			for(int j=0;j<TAGSIZE;j++){
 				storage.transitionTagCountTable[i][j] += 1;
@@ -83,17 +91,86 @@ public:
 				storage.tagCountTable[j] += 1;
 			}
 		}
-		//END ADD ONE SMOOTHING
+		//END ADD ONE
 		for(int i=0;i<TAGSIZE;i++){
 			for(int j=0;j<TAGSIZE;j++){
-				storage.tagProbTable[i][j] = (double)storage.transitionTagCountTable[i][j]/(double)storage.tagCountTable[j];
+				//probability table(i|j) = count(j,i) / count(j)
+				//probability table(t(k)|t(k-1)) = count(t(k-1),t(k)) / count(t(k-1))
+				storage.tagProbTable[i][j] = (double)storage.transitionTagCountTable[i][j] / (double)storage.tagCountTable[j];
 			}
 		}
 		for(int i=0;i<storage.totalWordType;i++){
 			for(int j=0;j<TAGSIZE;j++){
-				storage.wordTagProbTable[i][j] = (double)storage.wordTagCountTable[i][j]/(double)storage.tagCountTable[j];
+				//probability table(i|j) = count(j,i) / count(j)
+				//probability table(w(k)|t(k)) = count(t(k),w(k)) / count(t(k))
+				storage.wordTagProbTable[i][j] = (double)storage.wordTagCountTable[i][j] / (double)storage.tagCountTable[j];
 			}
 		}
+		return;
+	}
+
+	void wittenBellSmoothing(){
+		//Begin Initialize T and Z for t(k) and t(k-1) Bigram Probability
+		int T_Tag[TAGSIZE];
+		int Z_Tag[TAGSIZE];
+		memset(T_Tag,0,sizeof(T_Tag));
+		memset(Z_Tag,0,sizeof(Z_Tag));
+		
+		for(int j=0;j<TAGSIZE;j++){
+			for(int k=0;k<TAGSIZE;k++){
+				if (storage.transitionTagCountTable[k][j]>0){
+					T_Tag[j]++;
+				}
+				else{
+					Z_Tag[j]++;
+				}
+			}
+		}
+		//End Init
+
+		//Calculate t(k) and t(k-1)  Bigram Probability
+		for(int i=0;i<TAGSIZE;i++){
+			for(int j=0;j<TAGSIZE;j++){
+				if (storage.transitionTagCountTable[i][j]>0){
+					storage.tagProbTable[i][j] = (double)storage.transitionTagCountTable[i][j] / ((double)storage.tagCountTable[j] + (double)T_Tag[j]);
+				}
+				else{
+					storage.tagProbTable[i][j] = (double)T_Tag[j] / ((double)Z_Tag[j] * ((double)storage.tagCountTable[j] + (double)T_Tag[j]));
+				}
+			}
+		}
+		//end calculate
+
+		//Begin Initialize T and Z for w(k) and t(k) Probability
+		int T_WordTag[TAGSIZE];
+		int Z_WordTag[TAGSIZE];
+		memset(T_WordTag,0,sizeof(T_WordTag));
+		memset(Z_WordTag,0,sizeof(Z_WordTag));
+		
+		for(int j=0;j<TAGSIZE;j++){
+			for(int k=0;k<storage.totalWordType;k++){
+				if (storage.wordTagCountTable[k][j]>0){
+					T_WordTag[j]++;
+				}
+				else{
+					Z_WordTag[j]++;
+				}
+			}
+		}
+		//End Init
+
+		//Calculate w(k) and t(k) Probability
+		for(int i=0;i<storage.totalWordType;i++){
+			for(int j=0;j<TAGSIZE;j++){
+				if (storage.wordTagCountTable[i][j]>0){
+					storage.wordTagProbTable[i][j] = (double)storage.wordTagCountTable[i][j] / ((double)storage.tagCountTable[j] + (double)T_WordTag[j]);
+				}
+				else{
+					storage.wordTagProbTable[i][j] = (double)T_WordTag[j] / ((double)Z_WordTag[j] * ((double)storage.tagCountTable[j] + (double)T_WordTag[j]));
+				}
+			}
+		}
+		//end calculate
 		return;
 	}
 
@@ -103,6 +180,7 @@ public:
 			storage.wordTagProbTable.push_back(emptyVec);
 		}
 		addOneSmoothing();
+		//wittenBellSmoothing();
 		return;
 	}
 };
