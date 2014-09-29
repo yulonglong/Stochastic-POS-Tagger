@@ -33,11 +33,11 @@ public:
 				//cout << word << " / " << tag << endl;
 				int tagIndex = storage.getTagIndex(tag);
 				int prevTagIndex = storage.getTagIndex(prevTag);
-				storage.transitionTagTable[tagIndex][prevTagIndex]+=1;
-				storage.tagTable[tagIndex] += 1;
+				storage.transitionTagCountTable[tagIndex][prevTagIndex]+=1;
+				storage.tagCountTable[tagIndex] += 1;
 				int wordIndex = storage.insertWord(word);
-				storage.wordTagTable[wordIndex][tagIndex]+=1;
-				storage.wordTable[wordIndex]+=1;
+				storage.wordTagCountTable[wordIndex][tagIndex]+=1;
+				storage.wordCountTable[wordIndex]+=1;
 				prevTag = tag;
 				storage.totalWordBag++;
 			}
@@ -45,7 +45,7 @@ public:
 			tag = "</s>";
 			int tagIndex = storage.getTagIndex(tag);
 			int prevTagIndex = storage.getTagIndex(prevTag);
-			storage.transitionTagTable[tagIndex][prevTagIndex]+=1;
+			storage.transitionTagCountTable[tagIndex][prevTagIndex]+=1;
 		}
 		storage.totalWordType = storage.words.size();
 		return;
@@ -77,27 +77,27 @@ public:
 		//ADD ONE SMOOTHING
 		for(int i=0;i<TAGSIZE;i++){
 			for(int j=0;j<TAGSIZE;j++){
-				storage.transitionTagTable[i][j] += 1;
-				storage.tagTable[i]+=1;
-				storage.tagTable[j]+=1;
+				storage.transitionTagCountTable[i][j] += 1;
+				storage.tagCountTable[i]+=1;
+				storage.tagCountTable[j]+=1;
 			}
 		}
 		for(int i=0;i<storage.totalWordType;i++){
 			for(int j=0;j<TAGSIZE;j++){
-				storage.wordTagTable[i][j] += 1;
-				storage.wordTable[i] += 1;
-				storage.tagTable[j] += 1;
+				storage.wordTagCountTable[i][j] += 1;
+				storage.wordCountTable[i] += 1;
+				storage.tagCountTable[j] += 1;
 			}
 		}
 		//END ADD ONE SMOOTHING
 		for(int i=0;i<TAGSIZE;i++){
 			for(int j=0;j<TAGSIZE;j++){
-				storage.tagProbTable[i][j] = (double)storage.transitionTagTable[i][j]/(double)storage.tagTable[j];
+				storage.tagProbTable[i][j] = (double)storage.transitionTagCountTable[i][j]/(double)storage.tagCountTable[j];
 			}
 		}
 		for(int i=0;i<storage.totalWordType;i++){
 			for(int j=0;j<TAGSIZE;j++){
-				storage.wordTagProbTable[i][j] = (double)storage.wordTagTable[i][j]/(double)storage.tagTable[j];
+				storage.wordTagProbTable[i][j] = (double)storage.wordTagCountTable[i][j]/(double)storage.tagCountTable[j];
 			}
 		}
 		return;

@@ -13,10 +13,10 @@ using namespace std;
 
 class Storage{
 public:
-	int transitionTagTable[TAGSIZE][TAGSIZE];
-	vector< vector<int> > wordTagTable;
-	int tagTable[TAGSIZE];
-	vector<int> wordTable;
+	int transitionTagCountTable[TAGSIZE][TAGSIZE];
+	vector< vector<int> > wordTagCountTable;
+	int tagCountTable[TAGSIZE];
+	vector<int> wordCountTable;
 
 
 	double tagProbTable[TAGSIZE][TAGSIZE];
@@ -32,10 +32,10 @@ public:
 
 	Storage(){
 		setTags();
-		memset(transitionTagTable,0,sizeof(transitionTagTable));
-		wordTagTable.clear();
+		memset(transitionTagCountTable,0,sizeof(transitionTagCountTable));
+		wordTagCountTable.clear();
 		vector<int> emptyVec (TAGSIZE,0);
-		wordTagTable.push_back(emptyVec);
+		wordTagCountTable.push_back(emptyVec);
 		totalWordType = 0;
 		totalWordBag = 0;
 	}
@@ -74,8 +74,8 @@ public:
 			words.insert(pair<string,int>(word,index));
 			indexWords.insert(pair<int,string>(index,word));
 			vector<int> emptyVec (TAGSIZE,0);
-			wordTagTable.push_back(emptyVec);
-			wordTable.push_back(0);
+			wordTagCountTable.push_back(emptyVec);
+			wordCountTable.push_back(0);
 			return index;
 		}
 		else{
