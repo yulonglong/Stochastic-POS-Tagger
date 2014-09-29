@@ -31,12 +31,16 @@ public:
 	map<string,int> words;
 	map<int,string> indexWords;
 
+
+	//initialize the necessary attributes in the constructor
 	Storage(){
 		setTags();
 		memset(transitionTagCountTable,0,sizeof(transitionTagCountTable));
 		wordTagCountTable.clear();
+
 		vector<int> emptyVec (TAGSIZE,0);
 		wordTagCountTable.push_back(emptyVec);
+		
 		totalWordType = 0;
 		totalWordBag = 0;
 	}
