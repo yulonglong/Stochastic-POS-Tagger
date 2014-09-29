@@ -113,28 +113,26 @@ public:
 	}
 
 	bool exportData(string filename){
-		ofstream outfile;
-		outfile.open(filename.c_str(),ios::out);
-		if(outfile.fail()){
-			return false;
-		}
-		outfile << "Total Word Bag :" << totalWordBag << endl;
-		outfile << "Total Word Type :" << totalWordType << endl;
-		outfile << "Matrix of t(i-1) against t(i):" << endl;
+		FILE* outfile;
+		outfile = fopen(filename.c_str(),"w+");
+
+		fprintf(outfile,"Total Word Bag :%d\n",totalWordBag);
+		fprintf(outfile,"Total Word Type :%d\n",totalWordType);
+		fprintf(outfile,"Matrix of t(i-1) against t(i):\n");
 		for(int i=0;i<TAGSIZE;i++){
-			outfile << indexTags[i] << " ";
+			fprintf(outfile,"%s ",indexTags[i].c_str());
 			for(int j=0;j<TAGSIZE;j++){
-				outfile << tagProbTable[i][j] << " ";
+				fprintf(outfile,"%.5e ",tagProbTable[i][j]);
 			}
-			outfile << endl;
+			fprintf(outfile,"\n");
 		}
-		outfile << "Matrix of t(i) against w(i):" << endl;
+		fprintf(outfile,"Matrix of t(i) against w(i):\n");
 		for(int i=0;i<totalWordType;i++){
-			outfile << indexWords[i] << " ";
+			fprintf(outfile,"%s ",indexWords[i].c_str());
 			for(int j=0;j<TAGSIZE;j++){
-				outfile << wordTagProbTable[i][j] << " ";
+				fprintf(outfile, "%.5e ",wordTagProbTable[i][j]);
 			}
-			outfile << endl;
+			fprintf(outfile,"\n");
 		}
 		return true;
 	}
