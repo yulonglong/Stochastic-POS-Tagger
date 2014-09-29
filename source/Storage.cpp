@@ -8,6 +8,7 @@
 #include <map>
 #include <vector>
 #include <cstring>
+#include <cstdlib>
 #define TAGSIZE 47
 using namespace std;
 
@@ -115,6 +116,9 @@ public:
 	bool exportData(string filename){
 		FILE* outfile;
 		outfile = fopen(filename.c_str(),"w+");
+		if (outfile == NULL){
+			return false;
+		}
 
 		fprintf(outfile,"Total Word Bag :%d\n",totalWordBag);
 		fprintf(outfile,"Total Word Type :%d\n",totalWordType);
@@ -133,6 +137,41 @@ public:
 				fprintf(outfile, "%.5e ",wordTagProbTable[i][j]);
 			}
 			fprintf(outfile,"\n");
+		}
+		return true;
+	}
+
+	bool importData(string filename){
+		FILE* infile;
+		infile = fopen(filename.c_str(),"r+");
+		
+		if (infile == NULL){
+			return false;
+		}
+
+		fscanf(infile,"Total Word Bag :%d\n",&totalWordBag);
+		fscanf(infile,"Total Word Type :%d\n",&totalWordType);
+		fscanf(infile,"Matrix of t(i-1) against t(i):\n");
+		for(int i=0;i<TAGSIZE;i++){
+			char temp[10];
+			fscanf(infile,"%s ",temp);
+			for(int j=0;j<TAGSIZE;j++){
+				fscanf(infile,"%lf ",&tagProbTable[i][j]);
+			}
+			fscanf(infile,"\n");
+		}
+		fscanf(infile,"Matrix of t(i) against w(i):\n");
+		for(int i=0;i<totalWordType;i++){
+			char buffer[1000];
+			fscanf(infile,"%s ",buffer);
+			string word = buffer;
+			insertWord(word);
+			vector<double> emptyVec (TAGSIZE,0);
+			wordTagProbTable.push_back(emptyVec);
+			for(int j=0;j<TAGSIZE;j++){
+				fscanf(infile, "%lf ",&wordTagProbTable[i][j]);
+			}
+			fscanf(infile,"\n");
 		}
 		return true;
 	}
