@@ -22,39 +22,9 @@ class run_tagger{
 public:
 	Storage storage;
 
-	void importData(ifstream &infile){
-		string temp;
-		string tempString;
-
-		getline(infile,temp,':');//ignore string before colon
-		getline(infile,tempString);
-		storage.totalWordBag = atoi(tempString.c_str());
-		getline(infile,temp,':');//ignore string before colon
-		getline(infile,tempString);
-		storage.totalWordType = atoi(tempString.c_str());
-		getline(infile,temp);//ignore one line
-
-		for(int i=0;i<TAGSIZE;i++){
-			infile >> temp;
-			for(int j=0;j<TAGSIZE;j++){
-				infile >> storage.tagProbTable[i][j];
-			}
-		}
-		getline(infile,temp);//ignore from cin
-		getline(infile,temp);//ignore one line
-		for(int i=0;i<storage.totalWordType;i++){
-			string word;
-			infile >> word;
-			storage.insertWord(word);
-			vector<double> emptyVec (TAGSIZE,0);
-			storage.wordTagProbTable.push_back(emptyVec);
-			for(int j=0;j<TAGSIZE;j++){
-				infile >> storage.wordTagProbTable[i][j];
-			}
-		}
-		return;
+	bool importData(string filename){
+		return storage.importData(filename);
 	}
-
 
 	vector<string> input;
 	vector<string> tagOutput;
@@ -140,17 +110,13 @@ int main(int argc, char* argv[]){
 	if(infile1.fail()){
 		return 0;
 	}
-	infile2.open(modelFilename.c_str(),ios::in);
-	if(infile2.fail()){
-		return 0;
-	}
 	outfile.open(outFilename.c_str(),ios::out);
 	if(outfile.fail()){
 		return 0;
 	}
 
 	run_tagger rt;
-	rt.importData(infile2);
+	rt.importData(modelFilename);
 	rt.readInput(infile1);
 	rt.viterbiAlgorithm();
 	rt.generateOutput(outfile);
