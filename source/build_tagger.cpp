@@ -58,6 +58,11 @@ public:
 			int prevTagIndex = storage.getTagIndex(prevTag);
 			storage.transitionTagCountTable[tagIndex][prevTagIndex]+=1;
 		}
+
+		//add one more word "---unknown---" to handle unknown words.
+		int wordIndex = storage.insertWord("---unknown---");
+		storage.wordCountTable[wordIndex]+=1;
+
 		storage.totalWordType = storage.words.size();
 		return true;
 	}
