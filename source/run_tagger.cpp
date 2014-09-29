@@ -50,29 +50,22 @@ public:
 		return true;
 	}
 
-	// bool readInput(string filename){
-	// 	FILE* infile;
-	// 	infile = fopen(filename.c_str(),"r+");
-	// 	if(infile == NULL ){
-	// 		return false;
-	// 	}
-	// 	char buffer[1000];
-	// 	while (fscanf(infile,"%s ",buffer)==1){
-	// 		string word = buffer;
-	// 		input.push_back(word);
-	// 	}
-	// 	fclose(infile);
-	// 	return true;
-	// }
-
-	vector<string> viterbiAlgorithm(vector<string> &input){
-		//initializing dp table
-		vector< vector<double> > dp;
+	void initViterbi(vector< vector<double> > &dp, int parent[], int inputSize){
 		vector<double> emptyVec (TAGSIZE,0);
-		for(int i=0;i<(int)input.size();i++){
+		for(int i=0;i<inputSize;i++){
 			dp.push_back(emptyVec);
 		}
-		int parent[input.size()+1];
+		memset(parent,0,sizeof(parent));
+		return;
+	}
+
+	vector<string> viterbiAlgorithm(vector<string> &input){
+		int inputSize = input.size();
+		//initializing dp table and parent/backpointer table
+		vector< vector<double> > dp;
+		int parent[inputSize+1];
+
+		initViterbi(dp,parent,inputSize);
 
 		//first loop to initialize the first state
 		//i.e. connecting the start node to the first state nodes.
@@ -83,7 +76,7 @@ public:
 		}
 
 		//Dynamic programming to set rest of the states
-		for(int d=1;d<(int)input.size();d++){
+		for(int d=1;d<inputSize;d++){
 			wordIndex = storage.getWordIndex(input[d]);
 			if(wordIndex == -1){
 				//if it is an unknown word, use the unknown word probability
@@ -120,7 +113,7 @@ public:
 
 		//obtain tag indexes from viterbi backpointer (i named it parent) and store in tagOutput
 		stack<int> s;
-		for(int d=input.size();d>0;d--){
+		for(int d=inputSize;d>0;d--){
 			s.push(parent[d]);
 		}
 		while(!s.empty()){
