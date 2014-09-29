@@ -18,9 +18,9 @@ public:
 	int tagCountTable[TAGSIZE];
 	vector<int> wordCountTable;
 
-
 	double tagProbTable[TAGSIZE][TAGSIZE];
 	vector< vector<double> > wordTagProbTable;
+	
 	int totalWordBag;
 	int totalWordType;
 
