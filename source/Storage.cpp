@@ -20,7 +20,7 @@ public:
 
 	double tagProbTable[TAGSIZE][TAGSIZE];
 	vector< vector<double> > wordTagProbTable;
-	
+
 	int totalWordBag;
 	int totalWordType;
 
@@ -110,5 +110,32 @@ public:
 		word = wordAndTag.substr(0,delimIndex);
 		tag = wordAndTag.substr(delimIndex+1);
 		return;
+	}
+
+	bool exportData(string filename){
+		ofstream outfile;
+		outfile.open(filename.c_str(),ios::out);
+		if(outfile.fail()){
+			return false;
+		}
+		outfile << "Total Word Bag :" << totalWordBag << endl;
+		outfile << "Total Word Type :" << totalWordType << endl;
+		outfile << "Matrix of t(i-1) against t(i):" << endl;
+		for(int i=0;i<TAGSIZE;i++){
+			outfile << indexTags[i] << " ";
+			for(int j=0;j<TAGSIZE;j++){
+				outfile << tagProbTable[i][j] << " ";
+			}
+			outfile << endl;
+		}
+		outfile << "Matrix of t(i) against w(i):" << endl;
+		for(int i=0;i<totalWordType;i++){
+			outfile << indexWords[i] << " ";
+			for(int j=0;j<TAGSIZE;j++){
+				outfile << wordTagProbTable[i][j] << " ";
+			}
+			outfile << endl;
+		}
+		return true;
 	}
 };

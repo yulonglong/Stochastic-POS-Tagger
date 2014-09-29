@@ -20,7 +20,18 @@ public:
 	build_tagger(){
 	}
 
-	void countData(ifstream &infile){
+	bool exportData(string filename){
+		return storage.exportData(filename);
+	}
+
+	bool countData(string filename){
+		ifstream infile;
+
+		infile.open(filename.c_str(),ios::in);
+		if(infile.fail()){
+			return false;
+		}
+
 		string line;
 		while(getline(infile,line)){
 			string prevTag = "<s>";
@@ -48,29 +59,7 @@ public:
 			storage.transitionTagCountTable[tagIndex][prevTagIndex]+=1;
 		}
 		storage.totalWordType = storage.words.size();
-		return;
-	}
-
-	void exportData(ofstream &outfile){
-		outfile << "Total Word Bag :" << storage.totalWordBag << endl;
-		outfile << "Total Word Type :" << storage.totalWordType << endl;
-		outfile << "Matrix of t(i-1) against t(i):" << endl;
-		for(int i=0;i<TAGSIZE;i++){
-			outfile << storage.indexTags[i] << " ";
-			for(int j=0;j<TAGSIZE;j++){
-				outfile << storage.tagProbTable[i][j] << " ";
-			}
-			outfile << endl;
-		}
-		outfile << "Matrix of t(i) against w(i):" << endl;
-		for(int i=0;i<storage.totalWordType;i++){
-			outfile << storage.indexWords[i] << " ";
-			for(int j=0;j<TAGSIZE;j++){
-				outfile << storage.wordTagProbTable[i][j] << " ";
-			}
-			outfile << endl;
-		}
-		return;
+		return true;
 	}
 
 	void addOneSmoothing(){
@@ -118,25 +107,12 @@ int main(int argc, char* argv[]){
 	string trainingFilename = argv[1];
 	string devtFilename = argv[2];
 	string modelFilename = argv[3];
-	ifstream infile;
-	ofstream outfile;
-
-	infile.open(trainingFilename.c_str(),ios::in);
-	if(infile.fail()){
-		return 0;
-	}
-
-	outfile.open(modelFilename.c_str(),ios::out);
-	if(outfile.fail()){
-		return 0;
-	}
-
+	
 	build_tagger bt;
 
-	bt.countData(infile);
+	bt.countData(trainingFilename);
 	bt.processData();
-	bt.exportData(outfile);
+	bt.exportData(modelFilename);
 	
-
 	return 0;
 }
