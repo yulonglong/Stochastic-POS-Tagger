@@ -29,12 +29,33 @@ public:
 	vector<string> input;
 	vector<string> tagOutput;
 
-	void readInput(ifstream &infile){
-		string word;
-		while(getline(infile,word,' ')){
+	// bool readInput(string filename){
+	// 	ifstream infile;
+	// 	infile.open(filename.c_str(),ios::in);
+	// 	if(infile.fail()){
+	// 		return false;
+	// 	}
+	// 	string word;
+	// 	while(getline(infile,word,' ')){
+	// 		input.push_back(word);
+	// 	}
+	// 	infile.close();
+	// 	return true;
+	// }
+
+	bool readInput(string filename){
+		FILE* infile;
+		infile = fopen(filename.c_str(),"r+");
+		if(infile == NULL ){
+			return false;
+		}
+		char buffer[1000];
+		while (fscanf(infile,"%s ",buffer)==1){
+			string word = buffer;
 			input.push_back(word);
 		}
-		return;
+		fclose(infile);
+		return true;
 	}
 
 	void viterbiAlgorithm(){
@@ -46,16 +67,21 @@ public:
 		}
 		int parent[input.size()+1];
 
-		//first loop
+		//first loop to initialize the first state
+		//i.e. connecting the start node to the first state nodes.
 		parent[0] = 45;
 		int wordIndex = storage.getWordIndex(input[0]);
 		for(int i=0;i<TAGSIZE-2;i++){
 			dp[0][i]=log2(storage.tagProbTable[i][45])+log2(storage.wordTagProbTable[wordIndex][i]);
 		}
 
-		//real DP
+		//Dynamic programming to set rest of the states
 		for(int d=1;d<(int)input.size();d++){
 			wordIndex = storage.getWordIndex(input[d]);
+			if(wordIndex == -1){
+				//if it is an unknown word, use the unknown word probability
+				wordIndex = storage.getWordIndex("---unknown---");
+			}
 			for(int i=0;i<TAGSIZE-2;i++){
 				double maxPrev = -DBL_MAX;
 				//get the maximum from the previous nodes
@@ -67,10 +93,13 @@ public:
 						parent[d]=j;
 					}
 				}
+				//store the result of the maximum/optimum probability in the state node
 				dp[d][i]=maxPrev+log2(storage.wordTagProbTable[wordIndex][i]);
 			}
 		}
 
+		//last loop to get the maximum/optimum value of the last state
+		//i.e. connecting the last state nodes to the end node
 		double maxPrev = -DBL_MAX;
 		for(int j=0;j<TAGSIZE-2;j++){
 			double tempDouble = dp[input.size()-1][j]+log2(storage.tagProbTable[46][j]);
@@ -80,7 +109,7 @@ public:
 			}
 		}
 
-		//generate output tags
+		//obtain tag indexes from viterbi backpointer (i named it parent) and store in tagOutput
 		stack<int> s;
 		for(int d=input.size();d>0;d--){
 			s.push(parent[d]);
@@ -92,11 +121,17 @@ public:
 		return;
 	}
 
-	void generateOutput(ofstream &outfile){
-		for(int i=0;i<(int)input.size();i++){
-			outfile << input[i] << "/" << tagOutput[i] << " ";
+	bool printOutput(string filename){
+		FILE* outfile;
+		outfile = fopen(filename.c_str(),"w+");
+		if(outfile == NULL){
+			return false;
 		}
-		return;
+		for(int i=0;i<(int)input.size();i++){
+			fprintf(outfile,"%s/%s ",input[i].c_str(),tagOutput[i].c_str());
+		}
+		fclose(outfile);
+		return true;
 	}
 };
 
@@ -104,22 +139,12 @@ int main(int argc, char* argv[]){
 	string testFilename = argv[1];
 	string modelFilename = argv[2];
 	string outFilename = argv[3];
-	ifstream infile1, infile2;
-	ofstream outfile;
-	infile1.open(testFilename.c_str(),ios::in);
-	if(infile1.fail()){
-		return 0;
-	}
-	outfile.open(outFilename.c_str(),ios::out);
-	if(outfile.fail()){
-		return 0;
-	}
 
 	run_tagger rt;
 	rt.importData(modelFilename);
-	rt.readInput(infile1);
+	rt.readInput(testFilename);
 	rt.viterbiAlgorithm();
-	rt.generateOutput(outfile);
+	rt.printOutput(outFilename);
 	
 	return 0;
 }

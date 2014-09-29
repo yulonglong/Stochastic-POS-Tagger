@@ -138,6 +138,7 @@ public:
 			}
 			fprintf(outfile,"\n");
 		}
+		fclose(outfile);
 		return true;
 	}
 
@@ -173,6 +174,7 @@ public:
 			}
 			fscanf(infile,"\n");
 		}
+		fclose(infile);
 		return true;
 	}
 };
