@@ -26,39 +26,46 @@ public:
 		return storage.importData(filename);
 	}
 
-	vector<string> input;
-	vector<string> tagOutput;
-
-	// bool readInput(string filename){
-	// 	ifstream infile;
-	// 	infile.open(filename.c_str(),ios::in);
-	// 	if(infile.fail()){
-	// 		return false;
-	// 	}
-	// 	string word;
-	// 	while(getline(infile,word,' ')){
-	// 		input.push_back(word);
-	// 	}
-	// 	infile.close();
-	// 	return true;
-	// }
+	vector< vector<string> > inputSentences;
+	vector< vector<string> > tagOutput;
 
 	bool readInput(string filename){
-		FILE* infile;
-		infile = fopen(filename.c_str(),"r+");
-		if(infile == NULL ){
+		ifstream infile;
+		infile.open(filename.c_str(),ios::in);
+		if(infile.fail()){
 			return false;
 		}
-		char buffer[1000];
-		while (fscanf(infile,"%s ",buffer)==1){
-			string word = buffer;
-			input.push_back(word);
+		string line;
+		string word;
+		while(getline(infile,line)){
+			vector<string> lineInput;
+			istringstream ifstream(line);
+			while(getline(ifstream,word,' ')){
+				lineInput.push_back(word);
+			}
+			inputSentences.push_back(lineInput);
 		}
-		fclose(infile);
+
+		infile.close();
 		return true;
 	}
 
-	void viterbiAlgorithm(){
+	// bool readInput(string filename){
+	// 	FILE* infile;
+	// 	infile = fopen(filename.c_str(),"r+");
+	// 	if(infile == NULL ){
+	// 		return false;
+	// 	}
+	// 	char buffer[1000];
+	// 	while (fscanf(infile,"%s ",buffer)==1){
+	// 		string word = buffer;
+	// 		input.push_back(word);
+	// 	}
+	// 	fclose(infile);
+	// 	return true;
+	// }
+
+	vector<string> viterbiAlgorithm(vector<string> &input){
 		//initializing dp table
 		vector< vector<double> > dp;
 		vector<double> emptyVec (TAGSIZE,0);
@@ -109,16 +116,26 @@ public:
 			}
 		}
 
+		vector<string> tagResult;
+
 		//obtain tag indexes from viterbi backpointer (i named it parent) and store in tagOutput
 		stack<int> s;
 		for(int d=input.size();d>0;d--){
 			s.push(parent[d]);
 		}
 		while(!s.empty()){
-			tagOutput.push_back(storage.indexTags[s.top()]);
+			tagResult.push_back(storage.indexTags[s.top()]);
 			s.pop();
 		}
-		return;
+		return tagResult;
+	}
+
+	void processData(){
+		for(int z=0;z<(int)inputSentences.size();z++){
+			vector<string> lineInput = inputSentences[z];
+			vector<string> tagResult = viterbiAlgorithm(lineInput);
+			tagOutput.push_back(tagResult);
+		}
 	}
 
 	bool printOutput(string filename){
@@ -127,8 +144,13 @@ public:
 		if(outfile == NULL){
 			return false;
 		}
-		for(int i=0;i<(int)input.size();i++){
-			fprintf(outfile,"%s/%s ",input[i].c_str(),tagOutput[i].c_str());
+		for(int z=0;z<(int)inputSentences.size();z++){
+			vector<string> lineInput = inputSentences[z];
+			vector<string> lineTagOutput = tagOutput[z];
+			for(int i=0;i<(int)lineInput.size();i++){
+				fprintf(outfile,"%s/%s ",lineInput[i].c_str(),lineTagOutput[i].c_str());
+			}
+			fprintf(outfile,"\n");
 		}
 		fclose(outfile);
 		return true;
@@ -143,7 +165,7 @@ int main(int argc, char* argv[]){
 	run_tagger rt;
 	rt.importData(modelFilename);
 	rt.readInput(testFilename);
-	rt.viterbiAlgorithm();
+	rt.processData();
 	rt.printOutput(outFilename);
 	
 	return 0;
