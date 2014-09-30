@@ -1,4 +1,4 @@
-//build_tagger.cpp
+//run_tagger.cpp
 //@author Steven Kester Yuwono
 //@matric A0080415N
 
