@@ -43,6 +43,11 @@ public:
 		
 		totalWordType = 0;
 		totalWordBag = 0;
+
+		//add one word "<UNK>" to handle unknown words.
+		int wordIndex = insertWord("<UNK>");
+		wordCountTable[wordIndex]+=1;
+		totalWordBag+=1;
 	}
 
 	void setTags(){
@@ -92,11 +97,10 @@ public:
 		map<string,int>::iterator it;
 		it = words.find(word);
 		if(it==words.end()){
-			return -1;
+			//return the index of "<UNK>" aka unknown words
+			it = words.find("<UNK>");
 		}
-		else{
-			return it->second;
-		}
+		return it->second;
 	}
 
 
