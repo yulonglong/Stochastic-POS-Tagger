@@ -174,13 +174,144 @@ public:
 		return;
 	}
 
+	void kneserNeySmoothing(){
+		double D = 0.75;
+
+		double alphaTag[TAGSIZE];
+		double alphaWordTag[TAGSIZE];
+
+		double PContinuationTag[TAGSIZE];
+		double PContinuationWordTag[storage.totalWordType];
+
+		//calculate alpha for tag bigram
+		for(int j=0;j<TAGSIZE;j++){
+			double totalBigram = 0;
+			double totalUnigram = 0;
+			for(int i=0;i<TAGSIZE;i++){
+				if(storage.transitionTagCountTable[i][j]>0){
+					storage.tagProbTable[i][j] = ((double)storage.transitionTagCountTable[i][j] - D) / (double)storage.tagCountTable[j];
+					totalBigram += storage.tagProbTable[i][j];
+				}
+				else{
+					totalUnigram += storage.tagCountTable[i] / (double) storage.totalWordBag;
+				}
+			}
+			alphaTag[j] = (1.0 - totalBigram) / totalUnigram;
+		}
+		
+		//calculate alpha for word tag
+		for(int j=0;j<TAGSIZE;j++){
+			double totalBigram = 0;
+			double totalUnigram = 0;
+			for(int i=0;i<storage.totalWordType;i++){
+				if(storage.wordTagCountTable[i][j]>0){
+					storage.wordTagProbTable[i][j] = ((double)storage.wordTagCountTable[i][j] - D) / (double)storage.tagCountTable[j];
+					totalBigram += storage.wordTagProbTable[i][j];
+				}
+				else{
+					totalUnigram += storage.wordCountTable[i] / (double) storage.totalWordBag;
+				}
+			}
+			alphaWordTag[j] = (1.0 - totalBigram) / totalUnigram;
+		}
+
+
+		//calculate continuation probability for tag
+		int tagNumerator[TAGSIZE];
+		memset(tagNumerator,0,sizeof(tagNumerator));
+	
+		for(int i=0;i<TAGSIZE;i++){
+			int continuationNumerator = 0;
+			for(int j=0;j<TAGSIZE;j++){
+				if(storage.transitionTagCountTable[i][j]>0){
+					continuationNumerator+=1;
+				}
+			}
+			//add-one smoothing for the numerator for <s>, zero words precedes that character.
+			if(continuationNumerator == 0){
+				tagNumerator[i] = 1;
+			}
+			else{
+				tagNumerator[i] = continuationNumerator;
+			}
+		}
+
+		int continuationDenominator = 0;
+		for(int i=0;i<TAGSIZE;i++){
+			continuationDenominator += tagNumerator[i];
+		}
+
+		//setting up Continuation probability
+		for(int i=0;i<TAGSIZE;i++){
+			PContinuationTag[i] = (double)tagNumerator[i] / (double)continuationDenominator;
+		}
+
+
+		//calculate continuation probability for wordtag
+		int wordTagNumerator[storage.totalWordType];
+		memset(wordTagNumerator,0,sizeof(wordTagNumerator));
+	
+		for(int i=0;i<storage.totalWordType;i++){
+			int continuationNumerator = 0;
+			for(int j=0;j<TAGSIZE;j++){
+				if(storage.wordTagCountTable[i][j]>0){
+					continuationNumerator+=1;
+				}
+			}
+			//add-one smoothing for the numerator for <s>, zero words precedes that character.
+			if(continuationNumerator == 0){
+				wordTagNumerator[i] = 1;
+			}
+			else{
+				wordTagNumerator[i] = continuationNumerator;
+			}
+		}
+
+		continuationDenominator = 0;
+		for(int i=0;i<storage.totalWordType;i++){
+			continuationDenominator += wordTagNumerator[i];
+		}
+
+		//setting up Continuation probability
+		for(int i=0;i<storage.totalWordType;i++){
+			PContinuationWordTag[i] = (double)wordTagNumerator[i] / (double)continuationDenominator;
+		}
+
+		//real probability counting
+		for(int i=0;i<TAGSIZE;i++){
+			for(int j=0;j<TAGSIZE;j++){
+				if(storage.transitionTagCountTable[i][j]>0){
+					storage.tagProbTable[i][j] = ((double)storage.transitionTagCountTable[i][j] - D) / (double)storage.tagCountTable[j];
+				}
+				else{
+					storage.tagProbTable[i][j] = alphaTag[j] * PContinuationTag[i];
+				}
+			}
+			//cout << PContinuationTag[i] << endl;
+		}
+		for(int i=0;i<storage.totalWordType;i++){
+			for(int j=0;j<TAGSIZE;j++){
+				if(storage.wordTagCountTable[i][j]>0){
+					storage.wordTagProbTable[i][j] = ((double)storage.wordTagCountTable[i][j] - D)  / (double)storage.tagCountTable[j];
+				}
+				else{
+					storage.wordTagProbTable[i][j] = alphaWordTag[j] * PContinuationWordTag[i];
+				}
+			}
+		}
+
+		return;
+
+	}
+
 	void processData(){
 		vector<double> emptyVec (TAGSIZE,0);
 		for(int i=0;i<storage.totalWordType;i++){
 			storage.wordTagProbTable.push_back(emptyVec);
 		}
-		addOneSmoothing();
+		//addOneSmoothing();
 		//wittenBellSmoothing();
+		kneserNeySmoothing();
 		return;
 	}
 };
