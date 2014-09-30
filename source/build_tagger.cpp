@@ -183,7 +183,7 @@ public:
 		double PContinuationTag[TAGSIZE];
 		double PContinuationWordTag[storage.totalWordType];
 
-		//calculate alpha for tag bigram
+		//calculate alpha for Tags Bigram (normalization factor)
 		for(int j=0;j<TAGSIZE;j++){
 			double totalBigram = 0;
 			double totalUnigram = 0;
@@ -199,7 +199,7 @@ public:
 			alphaTag[j] = (1.0 - totalBigram) / totalUnigram;
 		}
 		
-		//calculate alpha for word tag
+		//calculate alpha for Word and Tag (normalization factor)
 		for(int j=0;j<TAGSIZE;j++){
 			double totalBigram = 0;
 			double totalUnigram = 0;
@@ -216,7 +216,7 @@ public:
 		}
 
 
-		//calculate continuation probability for tag
+		//BEGIN calculate continuation probability for tag bigram
 		int tagNumerator[TAGSIZE];
 		memset(tagNumerator,0,sizeof(tagNumerator));
 	
@@ -235,19 +235,18 @@ public:
 				tagNumerator[i] = continuationNumerator;
 			}
 		}
-
 		int continuationDenominator = 0;
 		for(int i=0;i<TAGSIZE;i++){
 			continuationDenominator += tagNumerator[i];
 		}
-
 		//setting up Continuation probability
 		for(int i=0;i<TAGSIZE;i++){
 			PContinuationTag[i] = (double)tagNumerator[i] / (double)continuationDenominator;
 		}
+		//END calculate
 
 
-		//calculate continuation probability for wordtag
+		//EBGIN calculate continuation probability for Word and Tag
 		int wordTagNumerator[storage.totalWordType];
 		memset(wordTagNumerator,0,sizeof(wordTagNumerator));
 	
@@ -276,8 +275,9 @@ public:
 		for(int i=0;i<storage.totalWordType;i++){
 			PContinuationWordTag[i] = (double)wordTagNumerator[i] / (double)continuationDenominator;
 		}
+		//END calculate
 
-		//real probability counting
+		//real probability calculation for Word give the preceding Words
 		for(int i=0;i<TAGSIZE;i++){
 			for(int j=0;j<TAGSIZE;j++){
 				if(storage.transitionTagCountTable[i][j]>0){
@@ -289,6 +289,7 @@ public:
 			}
 			//cout << PContinuationTag[i] << endl;
 		}
+		//real probability calculation for Word given Tag
 		for(int i=0;i<storage.totalWordType;i++){
 			for(int j=0;j<TAGSIZE;j++){
 				if(storage.wordTagCountTable[i][j]>0){
