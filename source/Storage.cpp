@@ -91,15 +91,49 @@ public:
 		else{
 			return it->second;
 		}
-	};
+	}
+
+	string stringToLower(string word){
+		for(int i=0;i<word.length();i++){
+			word[i] = tolower(word[i]);
+		}
+		return word;
+	}
+
+	string stringFirstCharToUpper(string word){
+		word[0] = toupper(word[0]);
+		return word;
+	}
 
 	int getWordIndex(string word){
 		map<string,int>::iterator it;
 		it = words.find(word);
-		if(it==words.end()){
-			//return the index of "<UNK>" aka unknown words
-			it = words.find("<UNK>");
+		//if word is found, return index straight away
+		if(it!=words.end()){
+			return it->second;
 		}
+
+		//if word not found
+		//try with the lowercase word
+		string lowercaseWord = stringToLower(word);
+		it = words.find(lowercaseWord);
+		//if word is found, return index straight away
+		if(it!=words.end()){
+			return it->second;
+		}
+
+		//if word not found
+		//try with the first letter Uppercase word
+		string uppercaseWord = stringFirstCharToUpper(lowercaseWord);
+		it = words.find(uppercaseWord);
+		//if word is found, return index straight away
+		if(it!=words.end()){
+			return it->second;
+		}
+
+		//if still not found
+		//return the index of "<UNK>" aka unknown words
+		it = words.find("<UNK>");
 		return it->second;
 	}
 
