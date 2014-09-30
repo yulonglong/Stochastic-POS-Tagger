@@ -2,14 +2,19 @@
 //@author Steven Kester Yuwono
 //@matric A0080415N
 
+
 #include "Storage.cpp"
 
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <cstring>
+#include <cstdlib>
+#include <stack>
 #include <map>
 #include <vector>
-#include <cstring>
+#include <cmath>
+#define DBL_MAX 1.7976931348623158e+308 /* max value */
 #define TAGSIZE 47
 using namespace std;
 
@@ -64,10 +69,6 @@ public:
 			//add tag count for last character </s>, mapped to index 46
 			storage.tagCountTable[46]+=1;
 		}
-
-		//add one more word "---unknown---" to handle unknown words.
-		int wordIndex = storage.insertWord("---unknown---");
-		storage.wordCountTable[wordIndex]+=1;
 
 		storage.totalWordType = storage.words.size();
 
@@ -317,6 +318,140 @@ public:
 	}
 };
 
+class Validation{
+public:
+	Storage storage;
+
+	vector< vector<string> > inputSentences;
+	vector< vector<string> > correctTagOutput;
+	vector< vector<string> > tagOutput;
+
+	Validation(Storage &newStorage){
+		storage = newStorage;
+	}
+
+	bool readInputWithTag(string filename){
+		ifstream infile;
+		infile.open(filename.c_str(),ios::in);
+		if(infile.fail()){
+			return false;
+		}
+		string line;
+		int i = 0;
+		while(getline(infile,line)){
+			vector<string> lineInput;
+			vector<string> lineTagOutput;
+			istringstream istream(line);
+			string word, tag;
+			string wordAndTag;
+			while (getline(istream,wordAndTag,' ')) {
+				storage.splitWordAndTag(wordAndTag,word,tag);
+				lineInput.push_back(word);
+				lineTagOutput.push_back(tag);
+			}
+			inputSentences.push_back(lineInput);
+			correctTagOutput.push_back(lineTagOutput);
+		}
+		infile.close();
+		return true;
+	}
+
+	void initViterbi(vector< vector<double> > &dp, int parent[], int inputSize){
+		vector<double> emptyVec (TAGSIZE,0);
+		for(int i=0;i<inputSize;i++){
+			dp.push_back(emptyVec);
+		}
+		memset(parent,0,sizeof(parent));
+		return;
+	}
+
+	vector<string> viterbiAlgorithm(vector<string> &input){
+		int inputSize = input.size();
+		//initializing dp table and parent/backpointer table
+		vector< vector<double> > dp;
+		int parent[inputSize+1];
+
+		initViterbi(dp,parent,inputSize);
+
+		//first loop to initialize the first state
+		//i.e. connecting the start node to the first state nodes.
+		parent[0] = 45;
+		int wordIndex = storage.getWordIndex(input[0]);
+		for(int i=0;i<TAGSIZE-2;i++){
+			dp[0][i]=log2(storage.tagProbTable[i][45])+log2(storage.wordTagProbTable[wordIndex][i]);
+		}
+
+		//Dynamic programming to set rest of the states
+		for(int d=1;d<inputSize;d++){
+			wordIndex = storage.getWordIndex(input[d]);
+			for(int i=0;i<TAGSIZE-2;i++){
+				double maxPrev = -DBL_MAX;
+				//get the maximum from the previous nodes
+				for(int j=0;j<TAGSIZE-2;j++){
+					double tempDouble = dp[d-1][j]+log2(storage.tagProbTable[i][j]);
+					//cout << tempDouble << endl;
+					if(maxPrev<tempDouble){
+						maxPrev = tempDouble;
+						parent[d]=j;
+					}
+				}
+				//store the result of the maximum/optimum probability in the state node
+				dp[d][i]=maxPrev+log2(storage.wordTagProbTable[wordIndex][i]);
+			}
+		}
+
+		//last loop to get the maximum/optimum value of the last state
+		//i.e. connecting the last state nodes to the end node
+		double maxPrev = -DBL_MAX;
+		for(int j=0;j<TAGSIZE-2;j++){
+			double tempDouble = dp[input.size()-1][j]+log2(storage.tagProbTable[46][j]);
+			if(maxPrev<tempDouble){
+				maxPrev = tempDouble;
+				parent[input.size()]=j;
+			}
+		}
+
+		vector<string> tagResult;
+
+		//obtain tag indexes from viterbi backpointer (i named it parent) and store in tagOutput
+		stack<int> s;
+		for(int d=inputSize;d>0;d--){
+			s.push(parent[d]);
+		}
+		while(!s.empty()){
+			tagResult.push_back(storage.indexTags[s.top()]);
+			s.pop();
+		}
+		return tagResult;
+	}
+
+	void processData(){
+		for(int z=0;z<(int)inputSentences.size();z++){
+			vector<string> lineInput = inputSentences[z];
+			vector<string> tagResult = viterbiAlgorithm(lineInput);
+			tagOutput.push_back(tagResult);
+		}
+	}
+
+	bool printOutput(string filename){
+		FILE* outfile;
+		outfile = fopen(filename.c_str(),"w+");
+		if(outfile == NULL){
+			return false;
+		}
+		for(int z=0;z<(int)inputSentences.size();z++){
+			vector<string> lineInput = inputSentences[z];
+			vector<string> lineTagOutput = tagOutput[z];
+			for(int i=0;i<(int)lineInput.size();i++){
+				fprintf(outfile,"%s/%s ",lineInput[i].c_str(),lineTagOutput[i].c_str());
+			}
+			fprintf(outfile,"\n");
+		}
+		fclose(outfile);
+		return true;
+	}
+};
+
 
 int main(int argc, char* argv[]){
 	string trainingFilename = argv[1];
@@ -328,6 +463,11 @@ int main(int argc, char* argv[]){
 	bt.countData(trainingFilename);
 	bt.processData();
 	bt.exportData(modelFilename);
+
+	Validation v(bt.storage);
+	v.readInputWithTag(devtFilename);
+	v.processData();
+	v.printOutput("outdev.txt");
 	
 	return 0;
 }

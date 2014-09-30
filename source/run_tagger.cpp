@@ -78,10 +78,6 @@ public:
 		//Dynamic programming to set rest of the states
 		for(int d=1;d<inputSize;d++){
 			wordIndex = storage.getWordIndex(input[d]);
-			if(wordIndex == -1){
-				//if it is an unknown word, use the unknown word probability
-				wordIndex = storage.getWordIndex("---unknown---");
-			}
 			for(int i=0;i<TAGSIZE-2;i++){
 				double maxPrev = -DBL_MAX;
 				//get the maximum from the previous nodes
