@@ -16,6 +16,7 @@
 #include <cmath>
 #define DBL_MAX 1.7976931348623158e+308 /* max value */
 #define TAGSIZE 47
+#define SMALLTAGSIZE 45
 using namespace std;
 
 class build_tagger{
@@ -377,17 +378,17 @@ public:
 		//i.e. connecting the start node to the first state nodes.
 		parent[0] = 45;
 		int wordIndex = storage.getWordIndex(input[0]);
-		for(int i=0;i<TAGSIZE-2;i++){
+		for(int i=0;i<SMALLTAGSIZE;i++){
 			dp[0][i]=log2(storage.tagProbTable[i][45])+log2(storage.wordTagProbTable[wordIndex][i]);
 		}
 
 		//Dynamic programming to set rest of the states
 		for(int d=1;d<inputSize;d++){
 			wordIndex = storage.getWordIndex(input[d]);
-			for(int i=0;i<TAGSIZE-2;i++){
+			for(int i=0;i<SMALLTAGSIZE;i++){
 				double maxPrev = -DBL_MAX;
 				//get the maximum from the previous nodes
-				for(int j=0;j<TAGSIZE-2;j++){
+				for(int j=0;j<SMALLTAGSIZE;j++){
 					double tempDouble = dp[d-1][j]+log2(storage.tagProbTable[i][j]);
 					//cout << tempDouble << endl;
 					if(maxPrev<tempDouble){
@@ -403,7 +404,7 @@ public:
 		//last loop to get the maximum/optimum value of the last state
 		//i.e. connecting the last state nodes to the end node
 		double maxPrev = -DBL_MAX;
-		for(int j=0;j<TAGSIZE-2;j++){
+		for(int j=0;j<SMALLTAGSIZE;j++){
 			double tempDouble = dp[input.size()-1][j]+log2(storage.tagProbTable[46][j]);
 			if(maxPrev<tempDouble){
 				maxPrev = tempDouble;
@@ -459,7 +460,7 @@ public:
 		}
 
 		//init confusion Matrix
-		int confusionMatrix[TAGSIZE-2][TAGSIZE-2];
+		int confusionMatrix[SMALLTAGSIZE][SMALLTAGSIZE];
 		memset(confusionMatrix,0,sizeof(confusionMatrix));
 
 		int correctInstance = 0;
@@ -496,18 +497,116 @@ public:
 
 
 		//print confusion matrix
-		fprintf(outfile,"\n=== Confusion Matrix ===\n");
-		for(int i=0;i<TAGSIZE-2;i++){
+		fprintf(outfile,"\n=== Confusion Matrix ===\n\n");
+		for(int i=0;i<SMALLTAGSIZE;i++){
 			fprintf(outfile, "%4d ",i);
 		}
 		fprintf(outfile, "\n");
-		for(int i=0;i<TAGSIZE-2;i++){
-			for(int j=0;j<TAGSIZE-2;j++){
+		for(int i=0;i<SMALLTAGSIZE;i++){
+			for(int j=0;j<SMALLTAGSIZE;j++){
 				fprintf(outfile,"%4d ",confusionMatrix[i][j]);
 			}
 			fprintf(outfile,"| %d = %s\n",i,storage.indexTags[i].c_str());
 		}
 
+		//initialize table for True positive, False Positive, True Negative, False Negative, and total number of true instances for every class.
+		int TP[SMALLTAGSIZE];
+		memset(TP,0,sizeof(TP));
+		int FP[SMALLTAGSIZE];
+		memset(FP,0,sizeof(FP));
+		int TN[SMALLTAGSIZE];
+		memset(TN,0,sizeof(TN));
+		int FN[SMALLTAGSIZE];
+		memset(FN,0,sizeof(FN));
+		int totalTrueInstances[SMALLTAGSIZE];
+		memset(totalTrueInstances,0,sizeof(totalTrueInstances));
+		//count total number of True (class) instances, together with TP, and FN
+		for(int i=0;i<SMALLTAGSIZE;i++){
+			for(int j=0;j<SMALLTAGSIZE;j++){
+				if(i==j){
+					TP[i] = confusionMatrix[i][j];
+				}
+				else{
+					FN[i] += confusionMatrix[i][j];
+				}
+				totalTrueInstances[i] += confusionMatrix[i][j];
+			}
+		}
+		//count FP
+		for(int j=0;j<SMALLTAGSIZE;j++){
+			for(int i=0;i<SMALLTAGSIZE;i++){
+				if(i!=j){
+					FP[j] += confusionMatrix[i][j];
+				}
+			}
+		}
+		//count Total number of instances
+		int totalInstances = 0;
+		for(int i=0;i<SMALLTAGSIZE;i++){
+			//cout << storage.indexTags[i] << " " << totalTrueInstances[i] << endl;
+			totalInstances += totalTrueInstances[i];
+		}
+		//count TN
+		for(int i=0;i<SMALLTAGSIZE;i++){
+			TN[i] = totalInstances - TP[i] - FP[i] - FN[i];
+			// cout << "TP " << TP[i] <<endl;
+			// cout << "FP " << FP[i] <<endl;
+			// cout << "TN " << TN[i] <<endl;
+			// cout << "FN " << FN[i] <<endl;
+		}
+
+		//initialize TPRate(Recall), FP rate, Precision, and F-Measure
+		double TPrate[SMALLTAGSIZE];
+		memset(TPrate,0,sizeof(TPrate));
+		double FPrate[SMALLTAGSIZE];
+		memset(FPrate,0,sizeof(FPrate));
+		double precision[SMALLTAGSIZE];
+		memset(precision,0,sizeof(precision));
+		double Fmeasure[SMALLTAGSIZE];
+		memset(Fmeasure,0,sizeof(Fmeasure));
+
+		//calculate TPRate(Recall), FP rate, Precision, and F-Measure
+		for(int i=0;i<SMALLTAGSIZE;i++){
+			if(totalTrueInstances[i]>0){
+				TPrate[i] = (double)TP[i] / ((double)TP[i] + (double)FN[i]);
+				FPrate[i] = (double)FP[i] / ((double)FP[i] + (double)TN[i]);
+				precision[i] = (double)TP[i] / ((double)TP[i] + (double)FP[i]);
+				Fmeasure[i] = (2.0 * TPrate[i] * precision[i]) / (TPrate[i] + precision[i]);
+				// cout << "TPrate " << TPrate[i] << endl;
+				// cout << "FPrate " << FPrate[i] << endl;
+				// cout << "precision " << precision[i] << endl;
+				// cout << "Fmeasure " << Fmeasure[i] << endl;
+			}
+		}
+
+		//calculate weighted average of TPRate(Recall), FP rate, Precision, and F-Measure
+		double weightedAveTPrate = 0;
+		double weightedAveFPrate = 0;
+		double weightedAvePrecision = 0;
+		double weightedAveFmeasure = 0;
+		for(int i=0;i<SMALLTAGSIZE;i++){
+			weightedAveTPrate += (double)totalTrueInstances[i] * TPrate[i];
+			weightedAveFPrate += (double)totalTrueInstances[i] * FPrate[i];
+			weightedAvePrecision += (double)totalTrueInstances[i] * precision[i];
+			weightedAveFmeasure += (double)totalTrueInstances[i] * Fmeasure[i];
+		}
+		weightedAveTPrate /= (double)totalInstances;
+		weightedAveFPrate /= (double)totalInstances;
+		weightedAvePrecision /= (double)totalInstances;
+		weightedAveFmeasure /= (double)totalInstances;
+
+		// cout << "TPrate " << weightedAveTPrate << endl;
+		// cout << "FPrate " << weightedAveFPrate << endl;
+		// cout << "precision " << weightedAvePrecision << endl;
+		// cout << "Fmeasure " << weightedAveFmeasure << endl;
+
+		fprintf(outfile,"\n === Detailed Accuracy By Class === \n\n");
+		fprintf(outfile,"               TP Rate   FP Rate   Precision   F-Measure   Total Instance   Class\n");
+		for(int i=0;i<SMALLTAGSIZE;i++){
+			fprintf(outfile,"               %.5f   %.5f    %.5f     %.5f       %8d      %s\n", TPrate[i],FPrate[i],precision[i],Fmeasure[i],totalTrueInstances[i],storage.indexTags[i].c_str());
+		}
+		fprintf(outfile,"Weighted Avg.  %.5f   %.5f    %.5f     %.5f       %8d      \n", weightedAveTPrate,weightedAveFPrate,weightedAvePrecision,weightedAveFmeasure,totalInstances);
+		
 
 		fclose(outfile);
 		return true;
