@@ -450,6 +450,69 @@ public:
 		fclose(outfile);
 		return true;
 	}
+
+	bool validateOutput(string filename){
+		FILE* outfile;
+		outfile = fopen(filename.c_str(),"w+");
+		if(outfile == NULL){
+			return false;
+		}
+
+		//init confusion Matrix
+		int confusionMatrix[TAGSIZE-2][TAGSIZE-2];
+		memset(confusionMatrix,0,sizeof(confusionMatrix));
+
+		int correctInstance = 0;
+		int wrongInstance = 0;
+
+		for(int z=0;z<(int)correctTagOutput.size();z++){
+			vector<string> lineInput = inputSentences[z];
+			vector<string> lineCorrectTagOutput = correctTagOutput[z];
+			vector<string> lineTagOutput = tagOutput[z];
+			for(int i=0;i<(int)lineCorrectTagOutput.size();i++){
+				//set confusion matrix
+				int tagIndex = storage.getTagIndex(lineTagOutput[i]);
+				int correctTagIndex = storage.getTagIndex(lineCorrectTagOutput[i]);
+				confusionMatrix[correctTagIndex][tagIndex] +=1;
+
+				//count number of correct instances
+				if(lineCorrectTagOutput[i]==lineTagOutput[i]){
+					correctInstance += 1;
+				}
+				else{
+					wrongInstance += 1;
+					//print the wrong instances
+					fprintf(outfile,"%s : %s (correct: %s)\n",lineInput[i].c_str(),lineTagOutput[i].c_str(),lineCorrectTagOutput[i].c_str());
+				}
+			}
+			fprintf(outfile,"\n");
+		}
+
+		fprintf(outfile, "Correct Instances: %d\n",correctInstance);
+		fprintf(outfile, "Wrong Instances: %d\n",wrongInstance);
+		double result = ((double)correctInstance/((double)correctInstance + (double)wrongInstance))*100.0;
+		fprintf(outfile, "Correctly Classified Instances: %.2f %%\n",result);
+
+
+
+		//print confusion matrix
+		fprintf(outfile,"\n=== Confusion Matrix ===\n");
+		for(int i=0;i<TAGSIZE-2;i++){
+			fprintf(outfile, "%4d ",i);
+		}
+		fprintf(outfile, "\n");
+		for(int i=0;i<TAGSIZE-2;i++){
+			for(int j=0;j<TAGSIZE-2;j++){
+				fprintf(outfile,"%4d ",confusionMatrix[i][j]);
+			}
+			fprintf(outfile,"| %d = %s\n",i,storage.indexTags[i].c_str());
+		}
+
+
+		fclose(outfile);
+		return true;
+	}
+
 };
 
 
@@ -467,7 +530,7 @@ int main(int argc, char* argv[]){
 	Validation v(bt.storage);
 	v.readInputWithTag(devtFilename);
 	v.processData();
-	v.printOutput("outdev.txt");
+	v.validateOutput("outdev.txt");
 	
 	return 0;
 }
