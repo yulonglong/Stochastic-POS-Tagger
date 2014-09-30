@@ -327,7 +327,10 @@ public:
 	vector< vector<string> > correctTagOutput;
 	vector< vector<string> > tagOutput;
 
+	int confusionMatrix[SMALLTAGSIZE][SMALLTAGSIZE];
+
 	Validation(Storage &newStorage){
+		memset(confusionMatrix,0,sizeof(confusionMatrix));
 		storage = newStorage;
 	}
 
@@ -426,7 +429,7 @@ public:
 		return tagResult;
 	}
 
-	void processData(){
+	void processInput(){
 		for(int z=0;z<(int)inputSentences.size();z++){
 			vector<string> lineInput = inputSentences[z];
 			vector<string> tagResult = viterbiAlgorithm(lineInput);
@@ -434,40 +437,13 @@ public:
 		}
 	}
 
-	bool printOutput(string filename){
-		FILE* outfile;
-		outfile = fopen(filename.c_str(),"w+");
-		if(outfile == NULL){
-			return false;
-		}
-		for(int z=0;z<(int)inputSentences.size();z++){
-			vector<string> lineInput = inputSentences[z];
-			vector<string> lineTagOutput = tagOutput[z];
-			for(int i=0;i<(int)lineInput.size();i++){
-				fprintf(outfile,"%s/%s ",lineInput[i].c_str(),lineTagOutput[i].c_str());
-			}
-			fprintf(outfile,"\n");
-		}
-		fclose(outfile);
-		return true;
-	}
 
-	bool validateOutput(string filename){
-		FILE* outfile;
-		outfile = fopen(filename.c_str(),"w+");
-		if(outfile == NULL){
-			return false;
-		}
 
-		//init confusion Matrix
-		int confusionMatrix[SMALLTAGSIZE][SMALLTAGSIZE];
+	
+
+	bool processConfusionMatrix(FILE* outfile, bool showConfusionMatrix){
 		memset(confusionMatrix,0,sizeof(confusionMatrix));
-
-		int correctInstance = 0;
-		int wrongInstance = 0;
-
 		for(int z=0;z<(int)correctTagOutput.size();z++){
-			vector<string> lineInput = inputSentences[z];
 			vector<string> lineCorrectTagOutput = correctTagOutput[z];
 			vector<string> lineTagOutput = tagOutput[z];
 			for(int i=0;i<(int)lineCorrectTagOutput.size();i++){
@@ -475,40 +451,28 @@ public:
 				int tagIndex = storage.getTagIndex(lineTagOutput[i]);
 				int correctTagIndex = storage.getTagIndex(lineCorrectTagOutput[i]);
 				confusionMatrix[correctTagIndex][tagIndex] +=1;
+			}
+		}
 
-				//count number of correct instances
-				if(lineCorrectTagOutput[i]==lineTagOutput[i]){
-					correctInstance += 1;
+		if(showConfusionMatrix){
+			//print confusion matrix
+			fprintf(outfile,"\n=== Confusion Matrix ===\n\n");
+			for(int i=0;i<SMALLTAGSIZE;i++){
+				fprintf(outfile, "%4d ",i);
+			}
+			fprintf(outfile, "\n");
+			for(int i=0;i<SMALLTAGSIZE;i++){
+				for(int j=0;j<SMALLTAGSIZE;j++){
+					fprintf(outfile,"%4d ",confusionMatrix[i][j]);
 				}
-				else{
-					wrongInstance += 1;
-					//print the wrong instances
-					fprintf(outfile,"%s : %s (correct: %s)\n",lineInput[i].c_str(),lineTagOutput[i].c_str(),lineCorrectTagOutput[i].c_str());
-				}
+				fprintf(outfile,"| %d = %s\n",i,storage.indexTags[i].c_str());
 			}
 			fprintf(outfile,"\n");
 		}
+		return true;
+	}
 
-		fprintf(outfile, "Correct Instances: %d\n",correctInstance);
-		fprintf(outfile, "Wrong Instances: %d\n",wrongInstance);
-		double result = ((double)correctInstance/((double)correctInstance + (double)wrongInstance))*100.0;
-		fprintf(outfile, "Correctly Classified Instances: %.2f %%\n",result);
-
-
-
-		//print confusion matrix
-		fprintf(outfile,"\n=== Confusion Matrix ===\n\n");
-		for(int i=0;i<SMALLTAGSIZE;i++){
-			fprintf(outfile, "%4d ",i);
-		}
-		fprintf(outfile, "\n");
-		for(int i=0;i<SMALLTAGSIZE;i++){
-			for(int j=0;j<SMALLTAGSIZE;j++){
-				fprintf(outfile,"%4d ",confusionMatrix[i][j]);
-			}
-			fprintf(outfile,"| %d = %s\n",i,storage.indexTags[i].c_str());
-		}
-
+	bool processStatistics(FILE* outfile, bool showStatistics){
 		//initialize table for True positive, False Positive, True Negative, False Negative, and total number of true instances for every class.
 		int TP[SMALLTAGSIZE];
 		memset(TP,0,sizeof(TP));
@@ -549,10 +513,6 @@ public:
 		//count TN
 		for(int i=0;i<SMALLTAGSIZE;i++){
 			TN[i] = totalInstances - TP[i] - FP[i] - FN[i];
-			// cout << "TP " << TP[i] <<endl;
-			// cout << "FP " << FP[i] <<endl;
-			// cout << "TN " << TN[i] <<endl;
-			// cout << "FN " << FN[i] <<endl;
 		}
 
 		//initialize TPRate(Recall), FP rate, Precision, and F-Measure
@@ -567,15 +527,19 @@ public:
 
 		//calculate TPRate(Recall), FP rate, Precision, and F-Measure
 		for(int i=0;i<SMALLTAGSIZE;i++){
-			if(totalTrueInstances[i]>0){
-				TPrate[i] = (double)TP[i] / ((double)TP[i] + (double)FN[i]);
-				FPrate[i] = (double)FP[i] / ((double)FP[i] + (double)TN[i]);
-				precision[i] = (double)TP[i] / ((double)TP[i] + (double)FP[i]);
-				Fmeasure[i] = (2.0 * TPrate[i] * precision[i]) / (TPrate[i] + precision[i]);
-				// cout << "TPrate " << TPrate[i] << endl;
-				// cout << "FPrate " << FPrate[i] << endl;
-				// cout << "precision " << precision[i] << endl;
-				// cout << "Fmeasure " << Fmeasure[i] << endl;
+			if(totalTrueInstances[i] > 0){
+				if(TP[i] + FN[i] > 0){
+					TPrate[i] = (double)TP[i] / ((double)TP[i] + (double)FN[i]);
+				}
+				if(FP[i] + TN[i] > 0){
+					FPrate[i] = (double)FP[i] / ((double)FP[i] + (double)TN[i]);
+				}
+				if(TP[i] + FP[i] > 0){
+					precision[i] = (double)TP[i] / ((double)TP[i] + (double)FP[i]);
+				}
+				if(TPrate[i] + precision[i] > 0){
+					Fmeasure[i] = (2.0 * TPrate[i] * precision[i]) / (TPrate[i] + precision[i]);
+				}
 			}
 		}
 
@@ -595,19 +559,70 @@ public:
 		weightedAvePrecision /= (double)totalInstances;
 		weightedAveFmeasure /= (double)totalInstances;
 
-		// cout << "TPrate " << weightedAveTPrate << endl;
-		// cout << "FPrate " << weightedAveFPrate << endl;
-		// cout << "precision " << weightedAvePrecision << endl;
-		// cout << "Fmeasure " << weightedAveFmeasure << endl;
-
-		fprintf(outfile,"\n === Detailed Accuracy By Class === \n\n");
-		fprintf(outfile,"               TP Rate   FP Rate   Precision   F-Measure   Total Instance   Class\n");
-		for(int i=0;i<SMALLTAGSIZE;i++){
-			fprintf(outfile,"               %.5f   %.5f    %.5f     %.5f       %8d      %s\n", TPrate[i],FPrate[i],precision[i],Fmeasure[i],totalTrueInstances[i],storage.indexTags[i].c_str());
+		if(showStatistics){
+			fprintf(outfile,"\n === Detailed Accuracy By Class === \n\n");
+			fprintf(outfile,"               TP Rate   FP Rate   Precision   F-Measure   Total Instance   Class\n");
+			for(int i=0;i<SMALLTAGSIZE;i++){
+				fprintf(outfile,"               %.5f   %.5f    %.5f     %.5f       %8d      %s\n", TPrate[i],FPrate[i],precision[i],Fmeasure[i],totalTrueInstances[i],storage.indexTags[i].c_str());
+			}
+			fprintf(outfile,"Weighted Avg.  %.5f   %.5f    %.5f     %.5f       %8d      \n", weightedAveTPrate,weightedAveFPrate,weightedAvePrecision,weightedAveFmeasure,totalInstances);
+			fprintf(outfile,"\n\n");
 		}
-		fprintf(outfile,"Weighted Avg.  %.5f   %.5f    %.5f     %.5f       %8d      \n", weightedAveTPrate,weightedAveFPrate,weightedAvePrecision,weightedAveFmeasure,totalInstances);
-		
+		return true;
+	}
 
+	//process the wrong word and output it to outfile if showWrongWord is true.
+	bool processWrongWord(FILE* outfile,bool showWrongWord){
+
+		if(showWrongWord){
+			fprintf(outfile,"\n === Wrong instances === \n\n");
+		}
+
+		int correctInstance = 0;
+		int wrongInstance = 0;
+
+		for(int z=0;z<(int)correctTagOutput.size();z++){
+			vector<string> lineInput = inputSentences[z];
+			vector<string> lineCorrectTagOutput = correctTagOutput[z];
+			vector<string> lineTagOutput = tagOutput[z];
+			for(int i=0;i<(int)lineCorrectTagOutput.size();i++){
+				//count number of correct instances
+				if(lineCorrectTagOutput[i]==lineTagOutput[i]){
+					correctInstance += 1;
+				}
+				else{
+					wrongInstance += 1;
+					//print the wrong instances
+					if(showWrongWord){
+						fprintf(outfile,"%s : %s (correct: %s)\n",lineInput[i].c_str(),lineTagOutput[i].c_str(),lineCorrectTagOutput[i].c_str());
+					}
+				}
+			}
+		}
+
+		if(showWrongWord){
+			fprintf(outfile,"\n\n");
+			fprintf(outfile, "Correct Instances: %d\n",correctInstance);
+			fprintf(outfile, "Wrong Instances: %d\n",wrongInstance);
+			double result = ((double)correctInstance/((double)correctInstance + (double)wrongInstance))*100.0;
+			fprintf(outfile, "Correctly Classified Instances: %.2f %%\n",result);
+		}
+		return true;
+	}
+
+
+	bool trainingStatistics(string filename, bool showWrongWord, bool showConfusionMatrix, bool showStatistics){
+		FILE* outfile;
+		outfile = fopen(filename.c_str(),"w+");
+		if(outfile == NULL){
+			return false;
+		}
+
+		//init confusion Matrix
+		processWrongWord(outfile,showWrongWord);
+		processConfusionMatrix(outfile,showConfusionMatrix);
+		processStatistics(outfile,showStatistics);
+		
 		fclose(outfile);
 		return true;
 	}
@@ -628,8 +643,8 @@ int main(int argc, char* argv[]){
 
 	Validation v(bt.storage);
 	v.readInputWithTag(devtFilename);
-	v.processData();
-	v.validateOutput("outdev.txt");
+	v.processInput();
+	v.trainingStatistics("outdev.txt",true,true,true);
 	
 	return 0;
 }
