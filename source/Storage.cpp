@@ -99,7 +99,7 @@ public:
 	}
 
 	string stringToLower(string word){
-		for(int i=0;i<word.length();i++){
+		for(int i=0;i<(int)word.length();i++){
 			word[i] = tolower(word[i]);
 		}
 		return word;

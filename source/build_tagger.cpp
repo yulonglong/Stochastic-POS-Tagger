@@ -586,7 +586,6 @@ public:
 			return false;
 		}
 		string line;
-		int i = 0;
 		while(getline(infile,line)){
 			vector<string> lineInput;
 			vector<string> lineTagOutput;
