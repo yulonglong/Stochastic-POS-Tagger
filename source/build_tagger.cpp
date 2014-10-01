@@ -323,16 +323,21 @@ class Validation{
 public:
 	Storage storage;
 
+	double interpolationWeight[101];
+	double interpolationRecall[101];
+
+	Validation(Storage &newStorage){
+		for(int i=0;i<101;i++){
+			interpolationWeight[i] = (double)i / 100.0;
+		}
+		memset(interpolationRecall,0,sizeof(interpolationRecall));
+		storage = newStorage;
+	}
+
+  	//initialize the real identifier algorithm (viterbi)
 	vector< vector<string> > inputSentences;
 	vector< vector<string> > correctTagOutput;
 	vector< vector<string> > tagOutput;
-
-	int confusionMatrix[SMALLTAGSIZE][SMALLTAGSIZE];
-
-	Validation(Storage &newStorage){
-		memset(confusionMatrix,0,sizeof(confusionMatrix));
-		storage = newStorage;
-	}
 
 	bool readInputWithTag(string filename){
 		ifstream infile;
@@ -436,11 +441,64 @@ public:
 			tagOutput.push_back(tagResult);
 		}
 	}
+	//end identifier algorithm
 
 
 
+
+
+	//statistics table initialization
+	double correctlyClassifiedInstances;
+
+	int confusionMatrix[SMALLTAGSIZE][SMALLTAGSIZE];
+
+	int totalInstances;
+
+	//initialize table for True positive, False Positive, True Negative, False Negative, and total number of true instances for every class.
+	int TP[SMALLTAGSIZE];
+	int FP[SMALLTAGSIZE];
+	int TN[SMALLTAGSIZE];
+	int FN[SMALLTAGSIZE];
+	int totalTrueInstances[SMALLTAGSIZE];
 	
+	//initialize TPRate(Recall), FP rate, Precision, F-Measure, and accuracy
+	double TPrate[SMALLTAGSIZE];
+	double FPrate[SMALLTAGSIZE];
+	double precision[SMALLTAGSIZE];
+	double Fmeasure[SMALLTAGSIZE];
+	double accuracy[SMALLTAGSIZE];
+	
+	//calculate weighted average of TPRate(Recall), FP rate, Precision, F-Measure, and accuracy
+	double weightedAveTPrate;
+	double weightedAveFPrate;
+	double weightedAvePrecision;
+	double weightedAveFmeasure;
+	double weightedAveAccuracy;
 
+	void refresh(){
+		correctlyClassifiedInstances = 0;
+		totalInstances = 0;
+		memset(confusionMatrix,0,sizeof(confusionMatrix));
+		memset(TP,0,sizeof(TP));
+		memset(FP,0,sizeof(FP));
+		memset(TN,0,sizeof(TN));
+		memset(FN,0,sizeof(FN));
+		memset(totalTrueInstances,0,sizeof(totalTrueInstances));
+		memset(TPrate,0,sizeof(TPrate));
+		memset(FPrate,0,sizeof(FPrate));
+		memset(precision,0,sizeof(precision));
+		memset(Fmeasure,0,sizeof(Fmeasure));
+		memset(accuracy,0,sizeof(accuracy));
+		weightedAveTPrate = 0;
+		weightedAveFPrate = 0;
+		weightedAvePrecision = 0;
+		weightedAveFmeasure = 0;
+		weightedAveAccuracy = 0;
+	}
+
+	//end statistics table initialization
+
+	//methods for statistics 
 	bool processConfusionMatrix(FILE* outfile, bool showConfusionMatrix){
 		memset(confusionMatrix,0,sizeof(confusionMatrix));
 		for(int z=0;z<(int)correctTagOutput.size();z++){
@@ -473,17 +531,7 @@ public:
 	}
 
 	bool processStatistics(FILE* outfile, bool showStatistics){
-		//initialize table for True positive, False Positive, True Negative, False Negative, and total number of true instances for every class.
-		int TP[SMALLTAGSIZE];
-		memset(TP,0,sizeof(TP));
-		int FP[SMALLTAGSIZE];
-		memset(FP,0,sizeof(FP));
-		int TN[SMALLTAGSIZE];
-		memset(TN,0,sizeof(TN));
-		int FN[SMALLTAGSIZE];
-		memset(FN,0,sizeof(FN));
-		int totalTrueInstances[SMALLTAGSIZE];
-		memset(totalTrueInstances,0,sizeof(totalTrueInstances));
+		
 		//count total number of True (class) instances, together with TP, and FN
 		for(int i=0;i<SMALLTAGSIZE;i++){
 			for(int j=0;j<SMALLTAGSIZE;j++){
@@ -505,7 +553,6 @@ public:
 			}
 		}
 		//count Total number of instances
-		int totalInstances = 0;
 		for(int i=0;i<SMALLTAGSIZE;i++){
 			//cout << storage.indexTags[i] << " " << totalTrueInstances[i] << endl;
 			totalInstances += totalTrueInstances[i];
@@ -515,17 +562,8 @@ public:
 			TN[i] = totalInstances - TP[i] - FP[i] - FN[i];
 		}
 
-		//initialize TPRate(Recall), FP rate, Precision, and F-Measure
-		double TPrate[SMALLTAGSIZE];
-		memset(TPrate,0,sizeof(TPrate));
-		double FPrate[SMALLTAGSIZE];
-		memset(FPrate,0,sizeof(FPrate));
-		double precision[SMALLTAGSIZE];
-		memset(precision,0,sizeof(precision));
-		double Fmeasure[SMALLTAGSIZE];
-		memset(Fmeasure,0,sizeof(Fmeasure));
 
-		//calculate TPRate(Recall), FP rate, Precision, and F-Measure
+		//calculate TPRate(Recall), FP rate, Precision, and F-Measure, and accuracy
 		for(int i=0;i<SMALLTAGSIZE;i++){
 			if(totalTrueInstances[i] > 0){
 				if(TP[i] + FN[i] > 0){
@@ -540,32 +578,30 @@ public:
 				if(TPrate[i] + precision[i] > 0){
 					Fmeasure[i] = (2.0 * TPrate[i] * precision[i]) / (TPrate[i] + precision[i]);
 				}
+				accuracy[i] = ((double)TP[i] + (double)TN[i]) / (double)totalInstances;
 			}
 		}
 
-		//calculate weighted average of TPRate(Recall), FP rate, Precision, and F-Measure
-		double weightedAveTPrate = 0;
-		double weightedAveFPrate = 0;
-		double weightedAvePrecision = 0;
-		double weightedAveFmeasure = 0;
 		for(int i=0;i<SMALLTAGSIZE;i++){
 			weightedAveTPrate += (double)totalTrueInstances[i] * TPrate[i];
 			weightedAveFPrate += (double)totalTrueInstances[i] * FPrate[i];
 			weightedAvePrecision += (double)totalTrueInstances[i] * precision[i];
 			weightedAveFmeasure += (double)totalTrueInstances[i] * Fmeasure[i];
+			weightedAveAccuracy += (double)totalTrueInstances[i] * accuracy[i];
 		}
 		weightedAveTPrate /= (double)totalInstances;
 		weightedAveFPrate /= (double)totalInstances;
 		weightedAvePrecision /= (double)totalInstances;
 		weightedAveFmeasure /= (double)totalInstances;
+		weightedAveAccuracy /= (double)totalInstances;
 
 		if(showStatistics){
 			fprintf(outfile,"\n === Detailed Accuracy By Class === \n\n");
-			fprintf(outfile,"               TP Rate   FP Rate   Precision   F-Measure   Total Instance   Class\n");
+			fprintf(outfile,"               TP Rate   FP Rate   Precision   F-Measure   Accuracy   Total Instance   Class\n");
 			for(int i=0;i<SMALLTAGSIZE;i++){
-				fprintf(outfile,"               %.5f   %.5f    %.5f     %.5f       %8d      %s\n", TPrate[i],FPrate[i],precision[i],Fmeasure[i],totalTrueInstances[i],storage.indexTags[i].c_str());
+				fprintf(outfile,"               %.5f   %.5f    %.5f     %.5f    %.6f       %8d     %s\n", TPrate[i],FPrate[i],precision[i],Fmeasure[i],accuracy[i],totalTrueInstances[i],storage.indexTags[i].c_str());
 			}
-			fprintf(outfile,"Weighted Avg.  %.5f   %.5f    %.5f     %.5f       %8d      \n", weightedAveTPrate,weightedAveFPrate,weightedAvePrecision,weightedAveFmeasure,totalInstances);
+			fprintf(outfile,"Weighted Avg.  %.5f   %.5f    %.5f     %.5f    %.6f       %8d      \n", weightedAveTPrate,weightedAveFPrate,weightedAvePrecision,weightedAveFmeasure,weightedAveAccuracy,totalInstances);
 			fprintf(outfile,"\n\n");
 		}
 		return true;
@@ -600,12 +636,12 @@ public:
 			}
 		}
 
+		correctlyClassifiedInstances = ((double)correctInstance/((double)correctInstance + (double)wrongInstance))*100.0;
 		if(showWrongWord){
 			fprintf(outfile,"\n\n");
 			fprintf(outfile, "Correct Instances: %d\n",correctInstance);
 			fprintf(outfile, "Wrong Instances: %d\n",wrongInstance);
-			double result = ((double)correctInstance/((double)correctInstance + (double)wrongInstance))*100.0;
-			fprintf(outfile, "Correctly Classified Instances: %.2f %%\n",result);
+			fprintf(outfile, "Correctly Classified Instances: %.2f %%\n",correctlyClassifiedInstances);
 		}
 		return true;
 	}
@@ -618,7 +654,9 @@ public:
 			return false;
 		}
 
-		//init confusion Matrix
+		//init
+		refresh();
+		//process
 		processWrongWord(outfile,showWrongWord);
 		processConfusionMatrix(outfile,showConfusionMatrix);
 		processStatistics(outfile,showStatistics);
@@ -626,6 +664,7 @@ public:
 		fclose(outfile);
 		return true;
 	}
+	//end methods for statistics
 
 };
 
