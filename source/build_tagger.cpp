@@ -307,6 +307,16 @@ public:
 
 	}
 
+	void processUnigramProbability(){
+		for(int i=0;i<TAGSIZE;i++){
+			storage.tagUnigramProbTable[i] = storage.tagCountTable[i] / (double) storage.totalWordBag;
+		}
+		for(int i=0;i<storage.totalWordType;i++){
+			storage.wordTagUnigramProbTable.push_back(storage.wordCountTable[i] / (double) storage.totalWordBag);
+		}
+		return;
+	}
+
 	void processData(){
 		vector<double> emptyVec (TAGSIZE,0);
 		for(int i=0;i<storage.totalWordType;i++){
@@ -315,6 +325,7 @@ public:
 		//addOneSmoothing();
 		//wittenBellSmoothing();
 		kneserNeySmoothing();
+		processUnigramProbability();
 		return;
 	}
 };
@@ -323,129 +334,9 @@ class Validation{
 public:
 	Storage storage;
 
-	double interpolationWeight[101];
-	double interpolationRecall[101];
-
 	Validation(Storage &newStorage){
-		for(int i=0;i<101;i++){
-			interpolationWeight[i] = (double)i / 100.0;
-		}
-		memset(interpolationRecall,0,sizeof(interpolationRecall));
 		storage = newStorage;
 	}
-
-  	//initialize the real identifier algorithm (viterbi)
-	vector< vector<string> > inputSentences;
-	vector< vector<string> > correctTagOutput;
-	vector< vector<string> > tagOutput;
-
-	bool readInputWithTag(string filename){
-		ifstream infile;
-		infile.open(filename.c_str(),ios::in);
-		if(infile.fail()){
-			return false;
-		}
-		string line;
-		int i = 0;
-		while(getline(infile,line)){
-			vector<string> lineInput;
-			vector<string> lineTagOutput;
-			istringstream istream(line);
-			string word, tag;
-			string wordAndTag;
-			while (getline(istream,wordAndTag,' ')) {
-				storage.splitWordAndTag(wordAndTag,word,tag);
-				lineInput.push_back(word);
-				lineTagOutput.push_back(tag);
-			}
-			inputSentences.push_back(lineInput);
-			correctTagOutput.push_back(lineTagOutput);
-		}
-		infile.close();
-		return true;
-	}
-
-	void initViterbi(vector< vector<double> > &dp, int parent[], int inputSize){
-		vector<double> emptyVec (TAGSIZE,0);
-		for(int i=0;i<inputSize;i++){
-			dp.push_back(emptyVec);
-		}
-		memset(parent,0,sizeof(parent));
-		return;
-	}
-
-	vector<string> viterbiAlgorithm(vector<string> &input){
-		int inputSize = input.size();
-		//initializing dp table and parent/backpointer table
-		vector< vector<double> > dp;
-		int parent[inputSize+1];
-
-		initViterbi(dp,parent,inputSize);
-
-		//first loop to initialize the first state
-		//i.e. connecting the start node to the first state nodes.
-		parent[0] = 45;
-		int wordIndex = storage.getWordIndex(input[0]);
-		for(int i=0;i<SMALLTAGSIZE;i++){
-			dp[0][i]=log2(storage.tagProbTable[i][45])+log2(storage.wordTagProbTable[wordIndex][i]);
-		}
-
-		//Dynamic programming to set rest of the states
-		for(int d=1;d<inputSize;d++){
-			wordIndex = storage.getWordIndex(input[d]);
-			for(int i=0;i<SMALLTAGSIZE;i++){
-				double maxPrev = -DBL_MAX;
-				//get the maximum from the previous nodes
-				for(int j=0;j<SMALLTAGSIZE;j++){
-					double tempDouble = dp[d-1][j]+log2(storage.tagProbTable[i][j]);
-					//cout << tempDouble << endl;
-					if(maxPrev<tempDouble){
-						maxPrev = tempDouble;
-						parent[d]=j;
-					}
-				}
-				//store the result of the maximum/optimum probability in the state node
-				dp[d][i]=maxPrev+log2(storage.wordTagProbTable[wordIndex][i]);
-			}
-		}
-
-		//last loop to get the maximum/optimum value of the last state
-		//i.e. connecting the last state nodes to the end node
-		double maxPrev = -DBL_MAX;
-		for(int j=0;j<SMALLTAGSIZE;j++){
-			double tempDouble = dp[input.size()-1][j]+log2(storage.tagProbTable[46][j]);
-			if(maxPrev<tempDouble){
-				maxPrev = tempDouble;
-				parent[input.size()]=j;
-			}
-		}
-
-		vector<string> tagResult;
-
-		//obtain tag indexes from viterbi backpointer (i named it parent) and store in tagOutput
-		stack<int> s;
-		for(int d=inputSize;d>0;d--){
-			s.push(parent[d]);
-		}
-		while(!s.empty()){
-			tagResult.push_back(storage.indexTags[s.top()]);
-			s.pop();
-		}
-		return tagResult;
-	}
-
-	void processInput(){
-		for(int z=0;z<(int)inputSentences.size();z++){
-			vector<string> lineInput = inputSentences[z];
-			vector<string> tagResult = viterbiAlgorithm(lineInput);
-			tagOutput.push_back(tagResult);
-		}
-	}
-	//end identifier algorithm
-
-
-
-
 
 	//statistics table initialization
 	double correctlyClassifiedInstances;
@@ -666,6 +557,209 @@ public:
 	}
 	//end methods for statistics
 
+
+	//initialize the real identifier algorithm (viterbi)
+	vector< vector<string> > inputSentences;
+	vector< vector<string> > correctTagOutput;
+	vector< vector<string> > tagOutput;
+
+	bool readInputWithTag(string filename){
+		ifstream infile;
+		infile.open(filename.c_str(),ios::in);
+		if(infile.fail()){
+			return false;
+		}
+		string line;
+		int i = 0;
+		while(getline(infile,line)){
+			vector<string> lineInput;
+			vector<string> lineTagOutput;
+			istringstream istream(line);
+			string word, tag;
+			string wordAndTag;
+			while (getline(istream,wordAndTag,' ')) {
+				storage.splitWordAndTag(wordAndTag,word,tag);
+				lineInput.push_back(word);
+				lineTagOutput.push_back(tag);
+			}
+			inputSentences.push_back(lineInput);
+			correctTagOutput.push_back(lineTagOutput);
+		}
+		infile.close();
+		return true;
+	}
+
+	void initViterbi(vector< vector<double> > &dp, int parent[], int inputSize){
+		vector<double> emptyVec (TAGSIZE,0);
+		for(int i=0;i<inputSize;i++){
+			dp.push_back(emptyVec);
+		}
+		memset(parent,0,sizeof(parent));
+		return;
+	}
+
+	vector<string> viterbiAlgorithm(vector<string> &input){
+		int inputSize = input.size();
+		//initializing dp table and parent/backpointer table
+		vector< vector<double> > dp;
+		int parent[inputSize+1];
+
+		initViterbi(dp,parent,inputSize);
+
+		//first loop to initialize the first state
+		//i.e. connecting the start node to the first state nodes.
+		parent[0] = 45;
+		int wordIndex = storage.getWordIndex(input[0]);
+		for(int i=0;i<SMALLTAGSIZE;i++){
+			dp[0][i]=log2(tagNewProbTable[i][45])+log2(wordTagNewProbTable[wordIndex][i]);
+		}
+
+		//Dynamic programming to set rest of the states
+		for(int d=1;d<inputSize;d++){
+			wordIndex = storage.getWordIndex(input[d]);
+			for(int i=0;i<SMALLTAGSIZE;i++){
+				double maxPrev = -DBL_MAX;
+				//get the maximum from the previous nodes
+				for(int j=0;j<SMALLTAGSIZE;j++){
+					double tempDouble = dp[d-1][j]+log2(tagNewProbTable[i][j]);
+					//cout << tempDouble << endl;
+					if(maxPrev<tempDouble){
+						maxPrev = tempDouble;
+						parent[d]=j;
+					}
+				}
+				//store the result of the maximum/optimum probability in the state node
+				dp[d][i]=maxPrev+log2(wordTagNewProbTable[wordIndex][i]);
+			}
+		}
+
+		//last loop to get the maximum/optimum value of the last state
+		//i.e. connecting the last state nodes to the end node
+		double maxPrev = -DBL_MAX;
+		for(int j=0;j<SMALLTAGSIZE;j++){
+			double tempDouble = dp[input.size()-1][j]+log2(tagNewProbTable[46][j]);
+			if(maxPrev<tempDouble){
+				maxPrev = tempDouble;
+				parent[input.size()]=j;
+			}
+		}
+
+		vector<string> tagResult;
+
+		//obtain tag indexes from viterbi backpointer (i named it parent) and store in tagOutput
+		stack<int> s;
+		for(int d=inputSize;d>0;d--){
+			s.push(parent[d]);
+		}
+		while(!s.empty()){
+			tagResult.push_back(storage.indexTags[s.top()]);
+			s.pop();
+		}
+		return tagResult;
+	}
+
+	//process the training data and get statistics from the development data, without interpolation
+	void processDevelopmentDataWithoutInterpolation(){
+		refreshInterpolationScore();
+		
+		setInterpolationTable(100);
+		tagOutput.clear();
+		for(int z=0;z<(int)inputSentences.size();z++){
+			vector<string> lineInput = inputSentences[z];
+			vector<string> tagResult = viterbiAlgorithm(lineInput);
+			tagOutput.push_back(tagResult);
+		}
+	}
+
+	//process the training data and get statistics from the development data, with interpolation and find the best interpolation weight
+	void processDevelopmentDataWithInterpolation(){
+		refreshInterpolationScore();
+		
+		//loop through hundred possible interpolation weights and get recall value for each weight
+		for(int i=90;i<101;i++){
+			cout << i << endl;
+			setInterpolationTable(i);
+			tagOutput.clear();
+			for(int z=0;z<(int)inputSentences.size();z++){
+				vector<string> lineInput = inputSentences[z];
+				vector<string> tagResult = viterbiAlgorithm(lineInput);
+				tagOutput.push_back(tagResult);
+			}
+
+			processWrongWord(NULL,false);
+			interpolationRecall[i] = correctlyClassifiedInstances;
+		}
+
+		double maxRecall = -1;
+		int maxRecallIndex = -1;
+		for(int i=0;i<101;i++){
+			if(maxRecall<interpolationRecall[i]){
+				maxRecall = interpolationRecall[i];
+				maxRecallIndex = i;
+			}
+		}
+		optimumInterpolationIndex = maxRecallIndex;
+
+		//run viterbi one more time to keep the best result in the statistics
+		cout << "best interpolation index: " << optimumInterpolationIndex << endl;
+		setInterpolationTable(optimumInterpolationIndex);
+		tagOutput.clear();
+		for(int z=0;z<(int)inputSentences.size();z++){
+			vector<string> lineInput = inputSentences[z];
+			vector<string> tagResult = viterbiAlgorithm(lineInput);
+			tagOutput.push_back(tagResult);
+		}
+
+	}
+	//end identifier algorithm
+
+
+	//start interpolation
+	double interpolationWeight[101];
+	double interpolationRecall[101];
+	int optimumInterpolationIndex;
+
+	double tagNewProbTable[TAGSIZE][TAGSIZE];
+	vector< vector<double> > wordTagNewProbTable;
+
+	void refreshInterpolationScore(){
+		optimumInterpolationIndex = 100;
+		for(int i=0;i<101;i++){
+			interpolationWeight[i] = (double)i / 100.0;
+		}
+		memset(interpolationRecall,0,sizeof(interpolationRecall));
+		return;
+	}
+
+	void refreshInterpolationProbTable(){
+		memset(tagNewProbTable,0,sizeof(tagNewProbTable));
+		wordTagNewProbTable.clear();
+		for(int i=0;i<storage.totalWordType;i++){
+			vector<double> emptyVec (TAGSIZE,0);
+			wordTagNewProbTable.push_back(emptyVec);
+		}
+		return;
+	}
+
+	void setInterpolationTable(int index){
+		refreshInterpolationProbTable();
+		double interpolationUnigramWeight = 1.0 - interpolationWeight[index];
+		for(int i=0;i<TAGSIZE;i++){
+			for(int j=0;j<TAGSIZE;j++){
+				tagNewProbTable[i][j] = (storage.tagProbTable[i][j] * interpolationWeight[index]) + (interpolationUnigramWeight * storage.tagUnigramProbTable[i]);
+			}
+		}
+		for(int i=0;i<storage.totalWordType;i++){
+			for(int j=0;j<TAGSIZE;j++){
+				wordTagNewProbTable[i][j] = (storage.wordTagProbTable[i][j] * interpolationWeight[index]) + (interpolationUnigramWeight * storage.wordTagUnigramProbTable[i]);
+			}
+		}
+		return;
+	}
+
+
+	//end interpolation
+
 };
 
 
@@ -682,7 +776,7 @@ int main(int argc, char* argv[]){
 
 	Validation v(bt.storage);
 	v.readInputWithTag(devtFilename);
-	v.processInput();
+	v.processDevelopmentDataWithoutInterpolation();
 	v.trainingStatistics("outdev.txt",true,true,true);
 	
 	return 0;
