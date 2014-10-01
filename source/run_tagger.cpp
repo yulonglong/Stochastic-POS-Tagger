@@ -152,10 +152,26 @@ int main(int argc, char* argv[]){
 	string outFilename = argv[3];
 
 	run_tagger rt;
+
+	cout << endl;
+	cout << "Reading model file : " << modelFilename << endl;
 	rt.importData(modelFilename);
+
+	cout << endl;
+	cout << "Reading input/test data from file : " << testFilename << endl;
 	rt.readInput(testFilename);
+
+	cout << endl;
+	cout << "Processing Data (using Viterbi Algorithm)" << endl;
 	rt.processData();
+
+	cout << endl;
+	cout << "Writing output to file : " << outFilename << endl;
 	rt.printOutput(outFilename);
+
+	cout << endl;
+	cout << "Done! run_tagger is terminated." << endl;
+	cout << endl;
 	
 	return 0;
 }
