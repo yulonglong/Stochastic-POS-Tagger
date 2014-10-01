@@ -20,7 +20,9 @@ public:
 	vector<int> wordCountTable;
 
 	double tagProbTable[TAGSIZE][TAGSIZE];
+	double tagUnigramProbTable[TAGSIZE];
 	vector< vector<double> > wordTagProbTable;
+	vector<double> wordTagUnigramProbTable;
 
 	int totalWordBag;
 	int totalWordType;
@@ -34,6 +36,9 @@ public:
 
 	//initialize the necessary attributes in the constructor
 	Storage(){
+		memset(tagProbTable,0,sizeof(tagProbTable));
+		memset(tagUnigramProbTable,0,sizeof(tagUnigramProbTable));
+
 		setTags();
 		memset(transitionTagCountTable,0,sizeof(transitionTagCountTable));
 		wordTagCountTable.clear();
