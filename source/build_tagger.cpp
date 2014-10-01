@@ -317,14 +317,30 @@ public:
 		return;
 	}
 
-	void processData(){
+	void processDataWithSmoothing(string smoothingType){
 		vector<double> emptyVec (TAGSIZE,0);
 		for(int i=0;i<storage.totalWordType;i++){
 			storage.wordTagProbTable.push_back(emptyVec);
 		}
-		//addOneSmoothing();
-		//wittenBellSmoothing();
-		kneserNeySmoothing();
+		smoothingType = storage.stringToLower(smoothingType);
+		if(smoothingType == "addone"){
+			cout << "Add-One Smoothing" << endl;
+			addOneSmoothing();
+		}
+		else if(smoothingType == "wittenbell"){
+			cout << "Witten-Bell Smoothing" << endl;
+			wittenBellSmoothing();
+		}
+		else if(smoothingType == "kneserney"){
+			cout << "Kneser-Ney Smoothing with backoff" << endl;
+			kneserNeySmoothing();
+		}
+		//if invalid choice, use kneser-ney, the best smoothing
+		else{
+			cout << "Invalid smoothing type" << endl;
+			cout << "using default smoothing : Kneser-Ney Smoothing with backoff" << endl;
+			kneserNeySmoothing();
+		}
 		processUnigramProbability();
 		return;
 	}
@@ -672,12 +688,13 @@ public:
 	}
 
 	//process the training data and get statistics from the development data, with interpolation and find the best interpolation weight
-	void processDevelopmentDataWithInterpolation(){
+	//the parameter is the lower bound index, minimum 0, and upper bound index, maximum is 100.
+	void processDevelopmentDataWithInterpolation(int lowerBoundIndex, int upperBoundIndex){
 		refreshInterpolationScore();
 		
 		//loop through hundred possible interpolation weights and get recall value for each weight
-		for(int i=90;i<101;i++){
-			cout << i << endl;
+		for(int i = lowerBoundIndex ; i <= upperBoundIndex ; i++){
+			cout << "interpolating weight index : " << i << endl;
 			setInterpolationTable(i);
 			tagOutput.clear();
 			for(int z=0;z<(int)inputSentences.size();z++){
@@ -692,7 +709,7 @@ public:
 
 		double maxRecall = -1;
 		int maxRecallIndex = -1;
-		for(int i=0;i<101;i++){
+		for(int i = lowerBoundIndex ; i <= upperBoundIndex ; i++){
 			if(maxRecall<interpolationRecall[i]){
 				maxRecall = interpolationRecall[i];
 				maxRecallIndex = i;
@@ -701,7 +718,10 @@ public:
 		optimumInterpolationIndex = maxRecallIndex;
 
 		//run viterbi one more time to keep the best result in the statistics
-		cout << "best interpolation index: " << optimumInterpolationIndex << endl;
+		cout << "best interpolation weight index: " << optimumInterpolationIndex << endl;
+		printf("lambda 1 : %.2f (used with bigram probability, i.e. p(x|y)\n",(double)optimumInterpolationIndex/100.0);
+		printf("lambda 2 : %.2f (used with unigram probability, p(x)\n",(double)(100-optimumInterpolationIndex)/100.0);
+
 		setInterpolationTable(optimumInterpolationIndex);
 		tagOutput.clear();
 		for(int z=0;z<(int)inputSentences.size();z++){
@@ -710,6 +730,21 @@ public:
 			tagOutput.push_back(tagResult);
 		}
 
+	}
+
+	void copyInterpolationIndexToStorage(Storage &newStorage){
+		setInterpolationTable(optimumInterpolationIndex);
+		for(int i=0;i<TAGSIZE;i++){
+			for(int j=0;j<TAGSIZE;j++){
+				newStorage.tagProbTable[i][j] = tagNewProbTable[i][j];
+			}
+		}
+		for(int i=0;i<storage.totalWordType;i++){
+			for(int j=0;j<TAGSIZE;j++){
+				newStorage.wordTagProbTable[i][j] = wordTagNewProbTable[i][j];
+			}
+		}
+		return;
 	}
 	//end identifier algorithm
 
@@ -768,16 +803,59 @@ int main(int argc, char* argv[]){
 	string devtFilename = argv[2];
 	string modelFilename = argv[3];
 	
+	//create build_tagger instance
 	build_tagger bt;
 
+	cout << endl;
+	cout << "Reading Training file : " << trainingFilename << endl;
+	cout << "Counting attributes from the training file..." << endl;
 	bt.countData(trainingFilename);
-	bt.processData();
+
+	cout << endl;
+	cout << "Processing data, calculating probabilities with smoothing : " << endl;
+	//there are three type of smoothing "addone", "wittenbell", or "kneserney";
+	bt.processDataWithSmoothing("kneserney");
+	cout << endl;
+
+	//create Validation instance
+	Validation v(bt.storage);
+
+	cout << "Reading Development/Tuning file : " << devtFilename << endl;
+	v.readInputWithTag(devtFilename);
+	cout << endl;
+
+	//change this to false not to use interpolation (faster processing speed without interpolation)
+	bool useInterpolation = true;
+
+	if(useInterpolation){
+		cout << "Training and enhancing POS Tagger with interpolation." <<  endl;
+		//parameter is needed to specify the range of interpolation weights, max range is (0,100)
+		v.processDevelopmentDataWithInterpolation(40,90);
+	}
+	else{
+		cout << "Training and enhancing POSTagger without interpolation." <<  endl;
+		v.processDevelopmentDataWithoutInterpolation();
+	}
+
+	cout << endl;
+	cout << "Updating probability table for enhancement using interpolation result." << endl;
+	v.copyInterpolationIndexToStorage(bt.storage);
+
+	//@args:
+	//	first param (string): Statistics filename to be created,
+	//  second param (bool) : set to true to show wrong words identified by the POS Tagger program
+	//  third param  (bool) : set to true to show confusion matrix
+	//  fourth param (bool) : set to true to show detailed statistics such as Recall, TP rate, FP rate, F-measure, precision, accuracy and their weighted average.
+	//uncomment the line below to output/print the statistics
+	v.trainingStatistics("outstat.txt",true,true,true);
+
+	cout << endl;
+	cout << "Exporting data to file : " << modelFilename << endl;
 	bt.exportData(modelFilename);
 
-	Validation v(bt.storage);
-	v.readInputWithTag(devtFilename);
-	v.processDevelopmentDataWithoutInterpolation();
-	v.trainingStatistics("outdev.txt",true,true,true);
-	
+	cout << endl;
+	cout << "Done! build_tagger is terminated." << endl;
+	cout << endl;
+
 	return 0;
 }
