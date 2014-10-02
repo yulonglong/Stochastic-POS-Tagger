@@ -600,12 +600,17 @@ public:
 		return true;
 	}
 
-	void initViterbi(vector< vector<double> > &dp, int parent[], int inputSize){
+	void initViterbi(vector< vector<double> > &dp, int inputSize, vector< vector<int> > &parent) {
 		vector<double> emptyVec (TAGSIZE,0);
 		for(int i=0;i<inputSize;i++){
 			dp.push_back(emptyVec);
 		}
-		memset(parent,0,sizeof(parent));
+
+		parent.clear();
+		vector<int> emptyVecInt (SMALLTAGSIZE,0);
+		for(int i=0;i<=inputSize+1;i++){
+			parent.push_back(emptyVecInt);
+		}
 		return;
 	}
 
@@ -613,13 +618,15 @@ public:
 		int inputSize = input.size();
 		//initializing dp table and parent/backpointer table
 		vector< vector<double> > dp;
-		int parent[inputSize+1];
+		vector< vector<int> > parent;
 
-		initViterbi(dp,parent,inputSize);
+		initViterbi(dp,inputSize,parent);
 
 		//first loop to initialize the first state
 		//i.e. connecting the start node to the first state nodes.
-		parent[0] = 45;
+		for(int i=0;i<SMALLTAGSIZE;i++){
+			parent[0][i] = 45;
+		}
 		int wordIndex = storage.getWordIndex(input[0]);
 		for(int i=0;i<SMALLTAGSIZE;i++){
 			dp[0][i]=log2(tagNewProbTable[i][45])+log2(wordTagNewProbTable[wordIndex][i]);
@@ -636,7 +643,7 @@ public:
 					//cout << tempDouble << endl;
 					if(maxPrev<tempDouble){
 						maxPrev = tempDouble;
-						parent[d]=j;
+						parent[d][i]=j;
 					}
 				}
 				//store the result of the maximum/optimum probability in the state node
@@ -651,7 +658,9 @@ public:
 			double tempDouble = dp[input.size()-1][j]+log2(tagNewProbTable[46][j]);
 			if(maxPrev<tempDouble){
 				maxPrev = tempDouble;
-				parent[input.size()]=j;
+				for(int i=0;i<SMALLTAGSIZE;i++){
+					parent[inputSize][i]=j;
+				}
 			}
 		}
 
@@ -659,8 +668,11 @@ public:
 
 		//obtain tag indexes from viterbi backpointer (i named it parent) and store in tagOutput
 		stack<int> s;
-		for(int d=inputSize;d>0;d--){
-			s.push(parent[d]);
+		int prevBestTag = parent[inputSize][0];
+		s.push(prevBestTag);
+		for(int d=inputSize-1;d>0;d--){
+			s.push(parent[d][prevBestTag]);
+			prevBestTag = parent[d][prevBestTag];
 		}
 		while(!s.empty()){
 			tagResult.push_back(storage.indexTags[s.top()]);
@@ -820,7 +832,7 @@ int main(int argc, char* argv[]){
 	cout << endl;
 
 	//change this to false not to use interpolation (faster processing speed without interpolation)
-	bool useInterpolation = true;
+	bool useInterpolation = false;
 
 	if(useInterpolation){
 		cout << "Training and enhancing POS Tagger with interpolation." <<  endl;
