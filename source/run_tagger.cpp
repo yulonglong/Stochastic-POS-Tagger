@@ -15,6 +15,7 @@
 #include <cmath>
 #define DBL_MAX 1.7976931348623158e+308 /* max value */
 #define TAGSIZE 47
+#define SMALLTAGSIZE 45
 using namespace std;
 
 
@@ -50,12 +51,17 @@ public:
 		return true;
 	}
 
-	void initViterbi(vector< vector<double> > &dp, int parent[], int inputSize){
+	void initViterbi(vector< vector<double> > &dp, vector< vector<int> > &parent, int inputSize) {
 		vector<double> emptyVec (TAGSIZE,0);
 		for(int i=0;i<inputSize;i++){
 			dp.push_back(emptyVec);
 		}
-		memset(parent,0,sizeof(parent));
+
+		parent.clear();
+		vector<int> emptyVecInt (SMALLTAGSIZE,0);
+		for(int i=0;i<=inputSize+1;i++){
+			parent.push_back(emptyVecInt);
+		}
 		return;
 	}
 
@@ -63,30 +69,33 @@ public:
 		int inputSize = input.size();
 		//initializing dp table and parent/backpointer table
 		vector< vector<double> > dp;
-		int parent[inputSize+1];
+		vector< vector<int> > parent;
 
-		initViterbi(dp,parent,inputSize);
+		initViterbi(dp, parent, inputSize);
 
 		//first loop to initialize the first state
 		//i.e. connecting the start node to the first state nodes.
-		parent[0] = 45;
+		for(int i=0;i<SMALLTAGSIZE;i++){
+			parent[0][i] = 45;
+		}
+
 		int wordIndex = storage.getWordIndex(input[0]);
-		for(int i=0;i<TAGSIZE-2;i++){
+		for(int i=0;i<SMALLTAGSIZE;i++){
 			dp[0][i]=log2(storage.tagProbTable[i][45])+log2(storage.wordTagProbTable[wordIndex][i]);
 		}
 
 		//Dynamic programming to set rest of the states
 		for(int d=1;d<inputSize;d++){
 			wordIndex = storage.getWordIndex(input[d]);
-			for(int i=0;i<TAGSIZE-2;i++){
+			for(int i=0;i<SMALLTAGSIZE;i++){
 				double maxPrev = -DBL_MAX;
 				//get the maximum from the previous nodes
-				for(int j=0;j<TAGSIZE-2;j++){
+				for(int j=0;j<SMALLTAGSIZE;j++){
 					double tempDouble = dp[d-1][j]+log2(storage.tagProbTable[i][j]);
 					//cout << tempDouble << endl;
 					if(maxPrev<tempDouble){
 						maxPrev = tempDouble;
-						parent[d]=j;
+						parent[d][i]=j;
 					}
 				}
 				//store the result of the maximum/optimum probability in the state node
@@ -97,11 +106,13 @@ public:
 		//last loop to get the maximum/optimum value of the last state
 		//i.e. connecting the last state nodes to the end node
 		double maxPrev = -DBL_MAX;
-		for(int j=0;j<TAGSIZE-2;j++){
+		for(int j=0;j<SMALLTAGSIZE;j++){
 			double tempDouble = dp[input.size()-1][j]+log2(storage.tagProbTable[46][j]);
 			if(maxPrev<tempDouble){
 				maxPrev = tempDouble;
-				parent[input.size()]=j;
+				for(int i=0;i<SMALLTAGSIZE;i++){
+					parent[inputSize][i]=j;
+				}
 			}
 		}
 
@@ -109,8 +120,11 @@ public:
 
 		//obtain tag indexes from viterbi backpointer (i named it parent) and store in tagOutput
 		stack<int> s;
-		for(int d=inputSize;d>0;d--){
-			s.push(parent[d]);
+		int prevBestTag = parent[inputSize][0];
+		s.push(prevBestTag);
+		for(int d=inputSize-1;d>0;d--){
+			s.push(parent[d][prevBestTag]);
+			prevBestTag = parent[d][prevBestTag];
 		}
 		while(!s.empty()){
 			tagResult.push_back(storage.indexTags[s.top()]);
