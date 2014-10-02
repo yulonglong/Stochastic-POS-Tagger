@@ -185,38 +185,6 @@ public:
 		double PContinuationTag[TAGSIZE];
 		double PContinuationWordTag[storage.totalWordType];
 
-		//calculate alpha for Tags Bigram (normalization factor)
-		for(int j=0;j<TAGSIZE;j++){
-			double totalBigram = 0;
-			double totalUnigram = 0;
-			for(int i=0;i<TAGSIZE;i++){
-				if(storage.transitionTagCountTable[i][j]>0){
-					storage.tagProbTable[i][j] = ((double)storage.transitionTagCountTable[i][j] - D) / (double)storage.tagCountTable[j];
-					totalBigram += storage.tagProbTable[i][j];
-				}
-				else{
-					totalUnigram += storage.tagCountTable[i] / (double) storage.totalWordBag;
-				}
-			}
-			alphaTag[j] = (1.0 - totalBigram) / totalUnigram;
-		}
-		
-		//calculate alpha for Word and Tag (normalization factor)
-		for(int j=0;j<TAGSIZE;j++){
-			double totalBigram = 0;
-			double totalUnigram = 0;
-			for(int i=0;i<storage.totalWordType;i++){
-				if(storage.wordTagCountTable[i][j]>0){
-					storage.wordTagProbTable[i][j] = ((double)storage.wordTagCountTable[i][j] - D) / (double)storage.tagCountTable[j];
-					totalBigram += storage.wordTagProbTable[i][j];
-				}
-				else{
-					totalUnigram += storage.wordCountTable[i] / (double) storage.totalWordBag;
-				}
-			}
-			alphaWordTag[j] = (1.0 - totalBigram) / totalUnigram;
-		}
-
 
 		//BEGIN calculate continuation probability for tag bigram
 		int tagNumerator[TAGSIZE];
@@ -248,7 +216,7 @@ public:
 		//END calculate
 
 
-		//EBGIN calculate continuation probability for Word and Tag
+		//BEGIN calculate continuation probability for Word and Tag
 		int wordTagNumerator[storage.totalWordType];
 		memset(wordTagNumerator,0,sizeof(wordTagNumerator));
 	
@@ -278,6 +246,34 @@ public:
 			PContinuationWordTag[i] = (double)wordTagNumerator[i] / (double)continuationDenominator;
 		}
 		//END calculate
+
+
+		//calculate alpha for Tags Bigram (normalization factor)
+		for(int j=0;j<TAGSIZE;j++){
+			double totalBigram = 0;
+			for(int i=0;i<TAGSIZE;i++){
+				if(storage.transitionTagCountTable[i][j]>0){
+					storage.tagProbTable[i][j] = ((double)storage.transitionTagCountTable[i][j] - D) / (double)storage.tagCountTable[j];
+					totalBigram += storage.tagProbTable[i][j];
+				}
+			}
+			alphaTag[j] = (1.0 - totalBigram) / (1.0 - PContinuationTag[j]);
+		}
+		
+		//calculate alpha for Word and Tag (normalization factor)
+		for(int j=0;j<TAGSIZE;j++){
+			double totalBigram = 0;
+			for(int i=0;i<storage.totalWordType;i++){
+				if(storage.wordTagCountTable[i][j]>0){
+					storage.wordTagProbTable[i][j] = ((double)storage.wordTagCountTable[i][j] - D) / (double)storage.tagCountTable[j];
+					totalBigram += storage.wordTagProbTable[i][j];
+				}
+			}
+			alphaWordTag[j] = (1.0 - totalBigram) / (1.0 - PContinuationWordTag[j]);
+		}
+
+
+
 
 		//real probability calculation for Word give the preceding Words
 		for(int i=0;i<TAGSIZE;i++){
