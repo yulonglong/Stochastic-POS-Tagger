@@ -600,7 +600,7 @@ public:
 		return true;
 	}
 
-	void initViterbi(vector< vector<double> > &dp, int inputSize, vector< vector<int> > &parent) {
+	void initViterbi(vector< vector<double> > &dp, vector< vector<int> > &parent, int inputSize) {
 		vector<double> emptyVec (TAGSIZE,0);
 		for(int i=0;i<inputSize;i++){
 			dp.push_back(emptyVec);
@@ -620,13 +620,14 @@ public:
 		vector< vector<double> > dp;
 		vector< vector<int> > parent;
 
-		initViterbi(dp,inputSize,parent);
+		initViterbi(dp, parent, inputSize);
 
 		//first loop to initialize the first state
 		//i.e. connecting the start node to the first state nodes.
 		for(int i=0;i<SMALLTAGSIZE;i++){
 			parent[0][i] = 45;
 		}
+		
 		int wordIndex = storage.getWordIndex(input[0]);
 		for(int i=0;i<SMALLTAGSIZE;i++){
 			dp[0][i]=log2(tagNewProbTable[i][45])+log2(wordTagNewProbTable[wordIndex][i]);
@@ -837,7 +838,7 @@ int main(int argc, char* argv[]){
 	if(useInterpolation){
 		cout << "Training and enhancing POS Tagger with interpolation." <<  endl;
 		//parameter is needed to specify the range of interpolation weights, max range is (0,100)
-		v.processDevelopmentDataWithInterpolation(40,90);
+		v.processDevelopmentDataWithInterpolation(0,100);
 	}
 	else{
 		cout << "Training and enhancing POSTagger without interpolation." <<  endl;
