@@ -30,6 +30,7 @@ public:
 	vector< vector<string> > inputSentences;
 	vector< vector<string> > tagOutput;
 
+	//read input from file, sentences and words without POS tags
 	bool readInput(string filename){
 		ifstream infile;
 		infile.open(filename.c_str(),ios::in);
@@ -51,6 +52,7 @@ public:
 		return true;
 	}
 
+	//reset/refresh tables and matrices to be used by viterbi algorithm
 	void initViterbi(vector< vector<double> > &dp, vector< vector<int> > &parent, int inputSize) {
 		vector<double> emptyVec (TAGSIZE,0);
 		for(int i=0;i<inputSize;i++){
@@ -65,6 +67,7 @@ public:
 		return;
 	}
 
+	//use viterbi algorithm to assign POS tags for each word
 	vector<string> viterbiAlgorithm(vector<string> &input){
 		int inputSize = input.size();
 		//initializing dp table and parent/backpointer table
@@ -75,6 +78,7 @@ public:
 
 		//first loop to initialize the first state
 		//i.e. connecting the start node to the first state nodes.
+		//45 is the index for <s>
 		for(int i=0;i<SMALLTAGSIZE;i++){
 			parent[0][i] = 45;
 		}
@@ -105,6 +109,7 @@ public:
 
 		//last loop to get the maximum/optimum value of the last state
 		//i.e. connecting the last state nodes to the end node
+		//46 is the index of </s>
 		double maxPrev = -DBL_MAX;
 		for(int j=0;j<SMALLTAGSIZE;j++){
 			double tempDouble = dp[input.size()-1][j]+log2(storage.tagProbTable[46][j]);
@@ -133,6 +138,7 @@ public:
 		return tagResult;
 	}
 
+	//run viterbi algorithm for each sentence
 	void processData(){
 		for(int z=0;z<(int)inputSentences.size();z++){
 			vector<string> lineInput = inputSentences[z];
@@ -141,6 +147,7 @@ public:
 		}
 	}
 
+	//print output to file after assigning POS Tags with viterbi algorithm.
 	bool printOutput(string filename){
 		FILE* outfile;
 		outfile = fopen(filename.c_str(),"w+");
