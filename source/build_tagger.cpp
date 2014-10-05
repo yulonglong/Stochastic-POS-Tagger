@@ -134,9 +134,11 @@ public:
 		for(int i=0;i<TAGSIZE;i++){
 			for(int j=0;j<TAGSIZE;j++){
 				if (storage.transitionTagCountTable[i][j]>0){
+					//if count(i,j) is greater than zero, execute the formula
 					storage.tagProbTable[i][j] = (double)storage.transitionTagCountTable[i][j] / ((double)storage.tagCountTable[j] + (double)T_Tag[j]);
 				}
 				else{
+					//if count(i,j) is equal to zero, execute the formula
 					storage.tagProbTable[i][j] = (double)T_Tag[j] / ((double)Z_Tag[j] * ((double)storage.tagCountTable[j] + (double)T_Tag[j]));
 				}
 			}
@@ -165,9 +167,11 @@ public:
 		for(int i=0;i<storage.totalWordType;i++){
 			for(int j=0;j<TAGSIZE;j++){
 				if (storage.wordTagCountTable[i][j]>0){
+					//if count(i,j) is greater than zero, execute the formula
 					storage.wordTagProbTable[i][j] = (double)storage.wordTagCountTable[i][j] / ((double)storage.tagCountTable[j] + (double)T_WordTag[j]);
 				}
 				else{
+					//if count(i,j) is equal to zero, execute the formula
 					storage.wordTagProbTable[i][j] = (double)T_WordTag[j] / ((double)Z_WordTag[j] * ((double)storage.tagCountTable[j] + (double)T_WordTag[j]));
 				}
 			}
@@ -350,11 +354,9 @@ public:
 		storage = newStorage;
 	}
 
-	//statistics table initialization
+	//START statistics table initialization
 	double correctlyClassifiedInstances;
-
 	int confusionMatrix[SMALLTAGSIZE][SMALLTAGSIZE];
-
 	int totalInstances;
 
 	//initialize table for True positive, False Positive, True Negative, False Negative, and total number of true instances for every class.
@@ -378,6 +380,7 @@ public:
 	double weightedAveFmeasure;
 	double weightedAveAccuracy;
 
+	//refresh/reset all the attributes
 	void refresh(){
 		correctlyClassifiedInstances = 0;
 		totalInstances = 0;
@@ -398,10 +401,12 @@ public:
 		weightedAveFmeasure = 0;
 		weightedAveAccuracy = 0;
 	}
+	//END statistics table initialization
 
-	//end statistics table initialization
+	//BEGIN methods for statistics
 
-	//methods for statistics 
+	//methods to obtain confusion matrix
+	//output the confusion matrix if showConfusionmatrix is true
 	bool processConfusionMatrix(FILE* outfile, bool showConfusionMatrix){
 		memset(confusionMatrix,0,sizeof(confusionMatrix));
 		for(int z=0;z<(int)correctTagOutput.size();z++){
@@ -433,6 +438,8 @@ public:
 		return true;
 	}
 
+	//methods to obtain statistics of the model, i.e. Recall, TP rate, FP rate, F-measure, precision, etc
+	//output the statistics if showStatistics is true
 	bool processStatistics(FILE* outfile, bool showStatistics){
 		
 		//count total number of True (class) instances, together with TP, and FN
@@ -510,7 +517,8 @@ public:
 		return true;
 	}
 
-	//process the wrong word and output it to outfile if showWrongWord is true.
+	// process the wrong word, count the number of correctly classified instances
+	// output the wrong word accordingly if showWrongWord is true.
 	bool processWrongWord(FILE* outfile,bool showWrongWord){
 
 		if(showWrongWord){
@@ -549,7 +557,7 @@ public:
 		return true;
 	}
 
-
+	// obtain/print statistics, confusion matrix, and wrong word all in one function
 	bool trainingStatistics(string filename, bool showWrongWord, bool showConfusionMatrix, bool showStatistics){
 		FILE* outfile;
 		outfile = fopen(filename.c_str(),"w+");
@@ -560,21 +568,24 @@ public:
 		//init
 		refresh();
 		//process
-		processWrongWord(outfile,showWrongWord);
 		processConfusionMatrix(outfile,showConfusionMatrix);
 		processStatistics(outfile,showStatistics);
+		processWrongWord(outfile,showWrongWord);
 		
 		fclose(outfile);
 		return true;
 	}
-	//end methods for statistics
+	//END methods for statistics
 
+
+	//START classifier
 
 	//initialize the real identifier algorithm (viterbi)
 	vector< vector<string> > inputSentences;
 	vector< vector<string> > correctTagOutput;
 	vector< vector<string> > tagOutput;
 
+	//read input (with POS Tags), from file.
 	bool readInputWithTag(string filename){
 		ifstream infile;
 		infile.open(filename.c_str(),ios::in);
@@ -600,6 +611,7 @@ public:
 		return true;
 	}
 
+	//reset/refresh the required matrix/table for viterbi algorithm
 	void initViterbi(vector< vector<double> > &dp, vector< vector<int> > &parent, int inputSize) {
 		vector<double> emptyVec (TAGSIZE,0);
 		for(int i=0;i<inputSize;i++){
@@ -614,6 +626,7 @@ public:
 		return;
 	}
 
+	//default viterbiAlgorithm with custom processed probability
 	vector<string> viterbiAlgorithm(vector<string> &input){
 		int inputSize = input.size();
 		//initializing dp table and parent/backpointer table
@@ -624,6 +637,7 @@ public:
 
 		//first loop to initialize the first state
 		//i.e. connecting the start node to the first state nodes.
+		//45 is the index of <s>
 		for(int i=0;i<SMALLTAGSIZE;i++){
 			parent[0][i] = 45;
 		}
@@ -654,6 +668,7 @@ public:
 
 		//last loop to get the maximum/optimum value of the last state
 		//i.e. connecting the last state nodes to the end node
+		//46 is the index of </s>
 		double maxPrev = -DBL_MAX;
 		for(int j=0;j<SMALLTAGSIZE;j++){
 			double tempDouble = dp[input.size()-1][j]+log2(tagNewProbTable[46][j]);
@@ -697,7 +712,7 @@ public:
 
 	//process the training data and get statistics from the development data, with interpolation and find the best interpolation weight
 	//the parameter is the lower bound index, minimum 0, and upper bound index, maximum is 100.
-	void processDevelopmentDataWithInterpolation(int lowerBoundIndex, int upperBoundIndex){
+	void processDevelopmentDataWithInterpolationRange(int lowerBoundIndex, int upperBoundIndex){
 		refreshInterpolationScore();
 		
 		//loop through hundred possible interpolation weights and get recall value for each weight
@@ -737,10 +752,68 @@ public:
 			vector<string> tagResult = viterbiAlgorithm(lineInput);
 			tagOutput.push_back(tagResult);
 		}
+	}
+
+	//process the training data and get statistics from the development data, with interpolation and find the best interpolation weight
+	// using automatic detection of deteriorating performance, choose the best interpolation weight
+	// it works by detecting deteriorating performance in a row, with momentum threshold defined = 3
+	// i.e. if it has not improved its current best accuracy 3 times in a row, terminates and choose the best weight.
+	void processDevelopmentDataWithInterpolationAuto(){
+		refreshInterpolationScore();
+
+		double maxRecall = -1;
+		int maxRecallIndex = -1;
+
+		int dropPerformanceCount = 0;
+		
+		//loop through hundred possible interpolation weights and get recall value for each weight
+		for(int i = 100 ; i >= 0 ; i--){
+			cout << "interpolating weight index : " << i;
+			setInterpolationTable(i);
+			tagOutput.clear();
+			for(int z=0;z<(int)inputSentences.size();z++){
+				vector<string> lineInput = inputSentences[z];
+				vector<string> tagResult = viterbiAlgorithm(lineInput);
+				tagOutput.push_back(tagResult);
+			}
+
+			processWrongWord(NULL,false);
+			interpolationRecall[i] = correctlyClassifiedInstances;
+			cout << " -> " << interpolationRecall[i] << " %" <<endl;
+
+			if(maxRecall < interpolationRecall[i]){
+				maxRecall = interpolationRecall[i];
+				maxRecallIndex = i;
+				dropPerformanceCount = 0;
+			}
+			else{
+				dropPerformanceCount += 1;
+				if(dropPerformanceCount >= 3){
+					cout << "Maxima detected, stop manipulation on interpolation weight." << endl;
+					break;
+				}
+			}
+		}
+
+		optimumInterpolationIndex = maxRecallIndex;
+
+		//run viterbi one more time to keep the best result in the statistics
+		cout << "best interpolation weight index: " << optimumInterpolationIndex << endl;
+		printf("lambda 1 : %.2f (used with bigram probability, i.e. p(x|y)\n",(double)optimumInterpolationIndex/100.0);
+		printf("lambda 2 : %.2f (used with unigram probability, p(x)\n",(double)(100-optimumInterpolationIndex)/100.0);
+
+		setInterpolationTable(optimumInterpolationIndex);
+		tagOutput.clear();
+		for(int z=0;z<(int)inputSentences.size();z++){
+			vector<string> lineInput = inputSentences[z];
+			vector<string> tagResult = viterbiAlgorithm(lineInput);
+			tagOutput.push_back(tagResult);
+		}
 
 	}
 
-	void copyInterpolationIndexToStorage(Storage &newStorage){
+	//copy the new processed probability table into newStorage by reference, to be output into model_file in the subsequent steps.
+	void copyInterpolationProbTableToStorage(Storage &newStorage){
 		setInterpolationTable(optimumInterpolationIndex);
 		for(int i=0;i<TAGSIZE;i++){
 			for(int j=0;j<TAGSIZE;j++){
@@ -754,10 +827,11 @@ public:
 		}
 		return;
 	}
-	//end identifier algorithm
+
+	//END classifier
 
 
-	//start interpolation
+	//START interpolation related methods and attributes
 	double interpolationWeight[101];
 	double interpolationRecall[101];
 	int optimumInterpolationIndex;
@@ -783,7 +857,6 @@ public:
 		}
 		return;
 	}
-
 	void setInterpolationTable(int index){
 		refreshInterpolationProbTable();
 		double interpolationUnigramWeight = 1.0 - interpolationWeight[index];
@@ -800,8 +873,7 @@ public:
 		return;
 	}
 
-
-	//end interpolation
+	//END interpolation methods and attributes
 
 };
 
@@ -833,12 +905,16 @@ int main(int argc, char* argv[]){
 	cout << endl;
 
 	//change this to false not to use interpolation (faster processing speed without interpolation)
-	bool useInterpolation = false;
+	bool useInterpolation = true;
 
 	if(useInterpolation){
 		cout << "Training and enhancing POS Tagger with interpolation." <<  endl;
-		//parameter is needed to specify the range of interpolation weights, max range is (0,100)
-		v.processDevelopmentDataWithInterpolation(0,100);
+		//// parameter is needed to specify the range of interpolation weights, max range is (0,100)
+		// use the function below to calculate desired possible combinations of interpolation weight, 0.00 to 1.00
+		// v.processDevelopmentDataWithInterpolationRange(0,100);
+
+		// using automatic detection of deteriorating performance, choose the best interpolation weight
+		v.processDevelopmentDataWithInterpolationAuto();
 	}
 	else{
 		cout << "Training and enhancing POSTagger without interpolation." <<  endl;
@@ -847,15 +923,15 @@ int main(int argc, char* argv[]){
 
 	cout << endl;
 	cout << "Updating probability table for enhancement using interpolation result." << endl;
-	v.copyInterpolationIndexToStorage(bt.storage);
+	v.copyInterpolationProbTableToStorage(bt.storage);
 
 	//@args:
 	//	first param (string): Statistics filename to be created,
 	//  second param (bool) : set to true to show wrong words identified by the POS Tagger program
 	//  third param  (bool) : set to true to show confusion matrix
 	//  fourth param (bool) : set to true to show detailed statistics such as Recall, TP rate, FP rate, F-measure, precision, accuracy and their weighted average.
-	//uncomment the line below to output/print the statistics
-	v.trainingStatistics("outstat.txt",true,true,true);
+	//comment the line below to disable output/print the statistics
+	v.trainingStatistics("model_statistics.txt",true,true,true);
 
 	cout << endl;
 	cout << "Exporting data to file : " << modelFilename << endl;
