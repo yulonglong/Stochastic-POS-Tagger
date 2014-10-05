@@ -2,6 +2,25 @@
 //@author Steven Kester Yuwono
 //@matric A0080415N
 
+// to run the program, please compile have the following 3 cpp files in the same directory
+// 1. Storage.cpp
+// 2. build_tagger.cpp
+// 3. run_tagger.cpp
+
+// Please also place the training, development and test file in the same directory:
+// 1. sents.train
+// 2. sents.devt
+// 3. sents.test
+
+// compile build_tagger and run_tagger:
+// $> g++ -Wall build_tagger.cpp -o build_tagger.exe
+// $> g++ -Wall run_tagger.cp -o run_tagger.exe
+
+// then run the program as described in the pdf
+// $> build_tagger.exe sents.train sents.devt model_file
+// $> run_tagger.exe sents.test model_file sents.out
+
+// the answer will be in sents.out
 
 #include "Storage.cpp"
 
