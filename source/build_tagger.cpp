@@ -36,6 +36,7 @@
 #define DBL_MAX 1.7976931348623158e+308 /* max value */
 #define TAGSIZE 47
 #define SMALLTAGSIZE 45
+#define MOMENTUMTHRESHOLD 3  // for interpolation momentum threshold
 using namespace std;
 
 class build_tagger{
@@ -807,7 +808,7 @@ public:
 			}
 			else{
 				dropPerformanceCount += 1;
-				if(dropPerformanceCount >= 3){
+				if(dropPerformanceCount >= MOMENTUMTHRESHOLD){
 					cout << "Maxima detected, stop manipulation on interpolation weight." << endl;
 					break;
 				}
