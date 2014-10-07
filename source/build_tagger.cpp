@@ -201,7 +201,7 @@ public:
 	}
 
 	void kneserNeySmoothing(){
-		double D = 0.75;
+		double D = 0.085;
 
 		double alphaTag[TAGSIZE];
 		double alphaWordTag[TAGSIZE];
@@ -299,7 +299,7 @@ public:
 
 
 
-		//real probability calculation for Word give the preceding Words
+		//real probability calculation for tag given the preceding tag
 		for(int i=0;i<TAGSIZE;i++){
 			for(int j=0;j<TAGSIZE;j++){
 				if(storage.transitionTagCountTable[i][j]>0){
