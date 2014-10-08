@@ -13,7 +13,7 @@ Please place all the files mentioned below in the same directory.
 3. `sents.test`  
     - Test file  
     
-**Source files:  **
+**Source files:**
 
 1. `build_tagger.cpp`:  
     - Compilation command: `g++ -Wall build_tagger.cpp -o build_tagger.exe`  
