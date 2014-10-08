@@ -14,7 +14,7 @@
 
 // compile build_tagger and run_tagger:
 // $> g++ -Wall build_tagger.cpp -o build_tagger.exe
-// $> g++ -Wall run_tagger.cp -o run_tagger.exe
+// $> g++ -Wall run_tagger.cpp -o run_tagger.exe
 
 // then run the program as described in the pdf
 // $> build_tagger.exe sents.train sents.devt model_file
