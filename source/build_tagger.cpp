@@ -2,7 +2,7 @@
 //@author Steven Kester Yuwono
 //@matric A0080415N
 
-// to run the program, please compile have the following 3 cpp files in the same directory
+// to run the program, please have the following 3 cpp files in the same directory
 // 1. Storage.cpp
 // 2. build_tagger.cpp
 // 3. run_tagger.cpp
