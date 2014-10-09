@@ -177,8 +177,14 @@ public:
 		for(int z=0;z<(int)inputSentences.size();z++){
 			vector<string> lineInput = inputSentences[z];
 			vector<string> lineTagOutput = tagOutput[z];
-			for(int i=0;i<(int)lineInput.size();i++){
-				fprintf(outfile,"%s/%s ",lineInput[i].c_str(),lineTagOutput[i].c_str());
+
+			//first word and tag output, for formatting purposes
+			if(lineInput.size()>0){
+				fprintf(outfile,"%s/%s",lineInput[0].c_str(),lineTagOutput[0].c_str());
+			}
+			//subsequent word and tag output, for formatting purposes
+			for(int i=1;i<(int)lineInput.size();i++){
+				fprintf(outfile," %s/%s",lineInput[i].c_str(),lineTagOutput[i].c_str());
 			}
 			fprintf(outfile,"\n");
 		}
