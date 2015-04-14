@@ -18,6 +18,14 @@ int main(){
 	string inputFilename;
 	cin >> inputFilename;
 
+	cout << "Enter output filename: ";
+	string outputFilename;
+	cin >> outputFilename;
+
+	cout << "Enter the number of fold: ";
+	int fold;
+	cin >> fold;
+
 	ifstream infile;
 
 	infile.open(inputFilename.c_str(),ios::in);
@@ -30,16 +38,16 @@ int main(){
 		sentences.push_back(sentence);
 	}
 
-	for(int i=1;i<=10;i++){
-		cout << "Processing " << i << " out of 10" << endl;
-		int tenPercent = sentences.size()/10;
+	for(int i=1;i<=fold;i++){
+		cout << "Processing " << i << " out of " <<  fold << endl;
+		int tenPercent = sentences.size()/fold;
 
 		ostringstream oss1;
-		oss1 << "sents" << i << ".train";
+		oss1 << outputFilename << i << ".train";
 		string trainFilename = oss1.str();
 
 		ostringstream oss2;
-		oss2 << "sents" << i << ".test";
+		oss2 << outputFilename << i << ".test";
 		string testFilename = oss2.str();
 
 		FILE* outtrain;
