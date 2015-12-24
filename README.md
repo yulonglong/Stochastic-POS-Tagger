@@ -1,6 +1,8 @@
 Part-of-speech Tagger
 ================================
-**A0080415N STEVEN KESTER YUWONO**
+A Stochastic (HMM)  POS bigram tagger was developed in C++ using Penn Treebank tag set.  
+Viterbi algorithm which runs in O(T.N²) was implemented to find the optimal sequence of the most probable tags.  
+*T = number of words ; N = number of POS tags.*  
 
 Please place all the files mentioned below in the same directory.  
 
