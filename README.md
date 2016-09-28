@@ -4,7 +4,19 @@ A Stochastic (HMM)  POS bigram tagger was developed in C++ using Penn Treebank t
 Viterbi algorithm which runs in O(T.N²) was implemented to find the optimal sequence of the most probable tags.  
 *T = number of words ; N = number of POS tags.*  
 
-Please place all the files mentioned below in the same directory.  
+**Requirements:**  
+- C++ compiler (i.e., `g++`) is required.  
+- To check whether `g++` is installed in your computer, go to terminal or command prompt and type `g++`.  
+- If the command is not found, it means `g++` is not installed in your computer or `g++` has not been included in your `PATH`.  
+
+**I don't want any details. How do I compile and run it?**
+
+1. Go to (i.e., `cd`) the root directory of this repository.
+    - `~/github/Stochastic-POS-Tagger/ $>`  
+2. Run the demo script from terminal or command prompt.
+    - UNIX : `$> ./demoUNIX.sh`
+    - Windows : `$> demoWINDOWS.bat`
+3. Done! Models and result files are in the same root directory.
 
 **Training, development, and test file:**
 

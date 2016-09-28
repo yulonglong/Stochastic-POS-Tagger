@@ -12,6 +12,8 @@
 // 2. sents.devt
 // 3. sents.test
 
+// Instructions for WINDOWS:
+
 // compile build_tagger and run_tagger:
 // $> g++ -Wall build_tagger.cpp -o build_tagger.exe
 // $> g++ -Wall run_tagger.cpp -o run_tagger.exe
